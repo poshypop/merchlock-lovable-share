@@ -3,18 +3,20 @@
   const VOTE_KEY = "merchlock_vote_v1";
   const WISHLIST_KEY = "merchlock_wishlist_v1";
   const DISPATCH_KEY = "merchlock_dispatch_v1";
+  const DISPATCH_MODAL_DONE_KEY = "merchlock_dispatch_modal_done_v2";
+  const DISPATCH_MODAL_SESSION_KEY = "merchlock_dispatch_modal_session_v2";
   const ARTIST_CALL_KEY = "merchlock_artist_call_v1";
   const CHECKOUT_PAYMENT_ENABLED = false;
-  const DROP_STATUS = "preorder";
-  const VOTE_CLOSE_AT = new Date("2026-05-05T23:59:00-04:00").getTime();
+  const DROP_STATUS = "in-stock";
+  const VOTE_CLOSE_AT = new Date("2026-12-31T23:59:00-05:00").getTime();
 
   const PRODUCT_CATALOG = {
     REM: {
       sku: "REM",
       name: "Rem Plushie",
       price: 49,
-      artist: "@daichance",
-      ships: "May 2026",
+      artist: "@DIECHANCE",
+      ships: "Now",
       shopifyVariantId: "gid://shopify/ProductVariant/53625624002859",
     },
   };
@@ -87,11 +89,11 @@
   ];
 
   const NEWS = [
-    "first drop · rem plushie · preorder open",
-    "ships may 2026 worldwide",
+    "first drop · rem plushie · ready to ship",
+    "no preorder wait",
     "vote on the next plushie · 5 heroes",
     "20% royalty to artist on every unit",
-    "designed by @daichance · the catlock guy",
+    "designed by @DIECHANCE · the catlock guy",
   ];
 
   /* ============ Cart state ============ */
@@ -351,6 +353,14 @@
   }
 
   /* ============ Newsletter ============ */
+  function saveDispatchEmail(email) {
+    const normalized = String(email || "").trim().toLowerCase();
+    const saved = readJson(DISPATCH_KEY, []);
+    if (!saved.includes(normalized)) saved.push(normalized);
+    writeJson(DISPATCH_KEY, saved);
+    return normalized;
+  }
+
   function wireNewsletter() {
     const form = document.querySelector("[data-newsletter]");
     if (!form) return;
@@ -365,11 +375,81 @@
         input.focus();
         return;
       }
-      const saved = readJson(DISPATCH_KEY, []);
-      if (!saved.includes(email)) saved.push(email);
-      writeJson(DISPATCH_KEY, saved);
+      saveDispatchEmail(email);
       if (feedback) feedback.textContent = "◈ saved on this device · email backend not connected";
       input.value = "";
+    });
+  }
+
+  function wireEmailModal() {
+    const modal = document.querySelector("[data-email-modal]");
+    const form = document.querySelector("[data-email-modal-form]");
+    if (!modal || !form || document.body.getAttribute("data-page") !== "home") return;
+
+    const input = form.querySelector("input");
+    const feedback = document.querySelector("[data-email-modal-feedback]");
+    const closers = document.querySelectorAll("[data-email-modal-close]");
+    let previousFocus = null;
+    let open = false;
+
+    const markSessionClosed = () => {
+      try { sessionStorage.setItem(DISPATCH_MODAL_SESSION_KEY, "1"); } catch {}
+    };
+
+    const shouldOpen = () => {
+      try {
+        if (localStorage.getItem(DISPATCH_MODAL_DONE_KEY) === "1") return false;
+        if (sessionStorage.getItem(DISPATCH_MODAL_SESSION_KEY) === "1") return false;
+      } catch {}
+      return true;
+    };
+
+    function onKeydown(e) {
+      if (e.key === "Escape") closeModal();
+    }
+
+    function closeModal({ submitted = false } = {}) {
+      if (!open) return;
+      open = false;
+      modal.hidden = true;
+      markSessionClosed();
+      if (submitted) {
+        try { localStorage.setItem(DISPATCH_MODAL_DONE_KEY, "1"); } catch {}
+      }
+      document.removeEventListener("keydown", onKeydown);
+      if (previousFocus && typeof previousFocus.focus === "function") {
+        previousFocus.focus({ preventScroll: true });
+      }
+    }
+
+    function openModal() {
+      if (!shouldOpen()) return;
+      previousFocus = document.activeElement;
+      modal.hidden = false;
+      open = true;
+      document.addEventListener("keydown", onKeydown);
+      if (input) input.focus({ preventScroll: true });
+    }
+
+    window.setTimeout(openModal, 2400);
+
+    closers.forEach(btn => {
+      btn.addEventListener("click", () => closeModal());
+    });
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      if (!input) return;
+      const email = input.value.trim();
+      if (!email || !input.checkValidity()) {
+        if (feedback) feedback.textContent = "Enter a valid email.";
+        input.focus();
+        return;
+      }
+      saveDispatchEmail(email);
+      if (feedback) feedback.textContent = "Saved for this device. Email backend next.";
+      input.value = "";
+      window.setTimeout(() => closeModal({ submitted: true }), 950);
     });
   }
 
@@ -408,9 +488,9 @@
     });
   }
 
-  /* ============ Preorder / wishlist ============ */
-  function wirePreorder() {
-    const btn = document.querySelector("[data-preorder]");
+  /* ============ Buy / wishlist ============ */
+  function wireBuyNow() {
+    const btn = document.querySelector("[data-buy-now]");
     if (!btn) return;
     const label = btn.querySelector(".pt");
     if (DROP_STATUS === "sold-out") {
@@ -488,7 +568,7 @@
           <div class="pulp">YOUR CART IS EMPTY</div>
           <p>Nothing in here yet. Pick up a Rem plushie or check the next vote.</p>
           <a class="jp rust jp-btn" href="index.html#first-drop" style="font-size:13px;">
-            <span class="pb"></span><span class="pt">SHOP THE DROP</span>
+            <span class="pb"></span><span class="pt">SHOP</span>
           </a>
         </div>
       `;
@@ -517,7 +597,7 @@
     `).join("");
 
     const totals = calculateCartTotals(cart);
-    const artist = cart[0]?.artist || "@daichance";
+    const artist = cart[0]?.artist || "@DIECHANCE";
 
     summary.innerHTML = `
       <div class="summary-card">
@@ -612,7 +692,7 @@
           <div class="grand"><span class="label">Total</span><span class="val">${formatMoney(totals.total)}</span></div>
         </div>
         <div class="royalty-mini">
-          <div class="lab">◈ ${formatMoney(totals.royalty)} TO @daichance</div>
+          <div class="lab">◈ ${formatMoney(totals.royalty)} TO @DIECHANCE</div>
         </div>
       </div>
     `;
@@ -745,9 +825,10 @@
     }
     wireGallery();
     wireNewsletter();
+    wireEmailModal();
     wireArtistCall();
     wireNotifyDrop();
-    wirePreorder();
+    wireBuyNow();
     wireWishlist();
     wireSmoothScroll();
     renderCart();
