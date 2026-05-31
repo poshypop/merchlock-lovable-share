@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Merchlock">
+  <rect width="64" height="64" fill="#100e0c"/>
+  <path d="M10 20h6l3-5h26l3 5h6l-3 6 3 6-3 6 3 6h-6l-3 5H19l-3-5h-6l3-6-3-6 3-6z" fill="#3a6b5e"/>
+  <circle cx="32" cy="33" r="13" fill="#ede2c8"/>
+  <circle cx="27" cy="30" r="2" fill="#100e0c"/>
+  <circle cx="37" cy="30" r="2" fill="#100e0c"/>
+  <path d="M27 38c3 3 7 3 10 0" fill="none" stroke="#100e0c" stroke-width="3" stroke-linecap="round"/>
+</svg>

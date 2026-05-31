@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Cart — MERCHLOCK</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="cart">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div style="display:flex; align-items:center; gap:24px;">
+      <a href="index.html" aria-label="Home">
+        <span class="jp teal" style="font-size:14px;">
+          <span class="pb"></span>
+          <span class="pt">MERCHLOCK</span>
+        </span>
+      </a>
+    </div>
+    <div class="nav-links">
+      <a href="index.html#shop">Shop</a>
+      <a href="index.html#vote">Vote</a>
+      <a href="about.html">About</a>
+    </div>
+    <div class="nav-right">
+      <a class="cart-badge" href="cart.html">CART · <span data-cart-count aria-live="polite" aria-atomic="true">0</span></a>
+    </div>
+  </div>
+</nav>
+
+<main class="page-shell" id="main">
+  <div class="page">
+    <div class="cart-head">
+      <h1>Your Cart</h1>
+      <div class="sub">Review before checkout</div>
+    </div>
+
+    <div class="cart-layout">
+      <div data-cart-items></div>
+      <div data-cart-summary></div>
+    </div>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="page">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <span class="jp ink" style="font-size:14px;"><span class="pb"></span><span class="pt">MERCHLOCK</span></span>
+        <p class="foot-intro">
+          Unofficial fan merchandise. We partner with artists who design the plushies — production runs through a manufacturing partner.
+        </p>
+      </div>
+      <div class="foot-col">
+        <h4>Shop</h4>
+        <a href="index.html#shop">All products</a>
+        <a href="index.html#shop">Plushies</a>
+        <a href="index.html#vote">Vote</a>
+      </div>
+      <div class="foot-col">
+        <h4>Artists</h4>
+        <a href="index.html#artist-call">Apply</a>
+        <a href="about.html#voting">Royalties</a>
+      </div>
+      <div class="foot-col">
+        <h4>Status</h4>
+        <span class="foot-note">Social channels and legal pages will be linked once confirmed.</span>
+      </div>
+    </div>
+    <div class="foot-bar">
+      <span>© 2026 Merchlock · Unofficial fan merch</span>
+      <span>Not affiliated with the game's developer or publisher</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

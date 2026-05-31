@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid slice">
+  <rect width="200" height="200" fill="#242019"/>
+  <g stroke="#e8dcc0" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.85">
+    <path d="M 60 60 Q 100 40 140 60 Q 155 90 140 130 Q 100 160 60 130 Q 45 90 60 60 Z"/>
+    <path d="M 75 85 Q 80 82 85 86"/>
+    <path d="M 115 85 Q 120 82 125 86"/>
+    <path d="M 85 110 Q 100 118 115 110"/>
+    <path d="M 50 55 L 30 30"/>
+    <path d="M 150 55 L 170 30"/>
+  </g>
+  <g stroke="#a8762a" stroke-width="1" fill="none" opacity="0.6">
+    <path d="M 40 170 L 60 175 L 80 168 L 100 178 L 120 170 L 140 175 L 160 168"/>
+  </g>
+  <g fill="#a69a82" opacity="0.4" font-family="monospace" font-size="9" letter-spacing="1">
+    <text x="24" y="24">01</text>
+  </g>
+</svg>

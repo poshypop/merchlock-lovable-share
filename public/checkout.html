@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Checkout — MERCHLOCK</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="checkout">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="co-nav">
+  <div class="co-nav-inner">
+    <a href="index.html" aria-label="Home">
+      <span class="jp teal" style="font-size:14px;">
+        <span class="pb"></span>
+        <span class="pt">MERCHLOCK</span>
+      </span>
+    </a>
+    <div class="co-crumbs">
+      [ <a href="cart.html">1. cart</a> ] — [ <b>2. checkout</b> ] — [ 3. done ]
+    </div>
+    <a class="co-back" href="cart.html">← back to cart</a>
+  </div>
+</header>
+
+<main class="page-shell" id="main">
+  <div class="page">
+    <div class="cart-head">
+      <h1>Checkout</h1>
+      <div class="sub">Secure checkout via Shopify</div>
+
+    </div>
+
+    <div class="co-layout">
+      <form data-checkout-form novalidate>
+        <div class="co-section">
+          <div class="section-title">1 · CONTACT</div>
+          <div class="field">
+            <input type="email" placeholder="email" aria-label="email" autocomplete="email" required />
+          </div>
+          <label style="display:flex;gap:8px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;">
+            <input type="checkbox" style="width:14px;height:14px;accent-color:var(--amber);" />
+            email me about new drops
+          </label>
+        </div>
+
+        <div class="co-section">
+          <div class="section-title">2 · SHIP TO</div>
+          <div class="address-grid">
+            <div class="field"><input type="text" placeholder="first name" aria-label="first name" autocomplete="given-name" required /></div>
+            <div class="field"><input type="text" placeholder="last name" aria-label="last name" autocomplete="family-name" required /></div>
+            <div class="field full"><input type="text" placeholder="address" aria-label="address" autocomplete="address-line1" required /></div>
+            <div class="field full"><input type="text" placeholder="apt / suite" aria-label="apt or suite" autocomplete="address-line2" /></div>
+            <div class="field"><input type="text" placeholder="city" aria-label="city" autocomplete="address-level2" required /></div>
+            <div class="field"><input type="text" placeholder="state" aria-label="state" autocomplete="address-level1" required /></div>
+            <div class="field"><input type="text" placeholder="zip" aria-label="zip" autocomplete="postal-code" required /></div>
+            <div class="field"><input type="text" placeholder="country" aria-label="country" autocomplete="country-name" required /></div>
+          </div>
+        </div>
+
+        <div class="co-section">
+          <div class="section-title">3 · SHIPPING METHOD</div>
+          <div class="ship-options" data-ship-options role="radiogroup" aria-label="Shipping method">
+            <button class="ship-option active" type="button" role="radio" aria-checked="true" data-shipping-id="standard" data-shipping-price="6">
+              <span><span class="radio">●</span><span class="name">Standard · 5–7 days</span></span>
+              <span class="price">$6</span>
+            </button>
+            <button class="ship-option" type="button" role="radio" aria-checked="false" data-shipping-id="express" data-shipping-price="14">
+              <span><span class="radio">○</span><span class="name">Express · 2–3 days</span></span>
+              <span class="price">$14</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="co-section">
+          <div class="section-title">4 · PAYMENT</div>
+          <div class="prototype-payment" data-payment-panel>
+            Payment is handled securely by Shopify. Click "Checkout with Shopify" below to open the secure Shopify checkout in a new tab.
+          </div>
+
+        </div>
+
+        <div style="margin-top:22px;">
+          <button class="jp rust jp-btn" type="button" data-place-order>
+            <span class="pb"></span>
+            <span class="pt">REVIEW ORDER</span>
+          </button>
+          <div class="checkout-feedback" data-checkout-feedback role="status" aria-live="polite"></div>
+        </div>
+      </form>
+
+      <div data-checkout-summary></div>
+    </div>
+  </div>
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="wbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c1916"/>
+      <stop offset="100%" stop-color="#0f0d0b"/>
+    </linearGradient>
+    <linearGradient id="wtable" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#342c23"/>
+      <stop offset="100%" stop-color="#1f1a13"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="400" fill="url(#wbg)"/>
+
+  <g opacity="0.5">
+    <circle cx="120" cy="70" r="1.5" fill="#e8dcc0"/>
+    <circle cx="320" cy="50" r="1.5" fill="#e8dcc0"/>
+    <circle cx="520" cy="90" r="1.5" fill="#e8dcc0"/>
+    <circle cx="680" cy="40" r="1.5" fill="#e8dcc0"/>
+    <circle cx="240" cy="110" r="1" fill="#a69a82"/>
+    <circle cx="440" cy="30" r="1" fill="#a69a82"/>
+    <circle cx="600" cy="130" r="1" fill="#a69a82"/>
+  </g>
+
+  <rect x="40" y="90" width="180" height="50" fill="#2a241e" opacity="0.8"/>
+  <rect x="250" y="70" width="320" height="40" fill="#2a241e" opacity="0.6"/>
+  <rect x="600" y="100" width="180" height="40" fill="#2a241e" opacity="0.8"/>
+
+  <rect x="0" y="240" width="800" height="160" fill="url(#wtable)"/>
+  <line x1="0" y1="240" x2="800" y2="240" stroke="#4a4035" stroke-width="2"/>
+
+  <g>
+    <rect x="60" y="160" width="55" height="85" fill="#2d5a4f"/>
+    <rect x="60" y="160" width="55" height="6" fill="#3b7162"/>
+    <rect x="130" y="180" width="45" height="65" fill="#8a3d24"/>
+    <rect x="130" y="180" width="45" height="5" fill="#a04d30"/>
+    <rect x="188" y="170" width="50" height="75" fill="#a8762a"/>
+    <rect x="188" y="170" width="50" height="5" fill="#c08a36"/>
+    <rect x="252" y="185" width="42" height="60" fill="#9b4a62"/>
+    <rect x="252" y="185" width="42" height="5" fill="#b25a74"/>
+  </g>
+
+  <g transform="translate(360, 175)">
+    <rect x="0" y="25" width="130" height="70" fill="#3a322a" rx="3"/>
+    <rect x="0" y="25" width="130" height="8" fill="#4a4035"/>
+    <rect x="50" y="0" width="30" height="30" fill="#3a322a" rx="2"/>
+    <rect x="58" y="8" width="14" height="14" fill="#6a5f4f"/>
+    <line x1="65" y1="95" x2="65" y2="115" stroke="#a69a82" stroke-width="1"/>
+    <circle cx="65" cy="120" r="4" fill="#2d5a4f"/>
+  </g>
+
+  <g transform="translate(540, 200)">
+    <ellipse cx="30" cy="45" rx="55" ry="45" fill="#2d5a4f"/>
+    <ellipse cx="30" cy="8" rx="38" ry="32" fill="#2d5a4f"/>
+    <ellipse cx="10" cy="-18" rx="7" ry="22" fill="#2d5a4f" transform="rotate(-12 10 -18)"/>
+    <ellipse cx="50" cy="-18" rx="7" ry="22" fill="#2d5a4f" transform="rotate(12 50 -18)"/>
+    <circle cx="20" cy="8" r="3" fill="#141210"/>
+    <circle cx="40" cy="8" r="3" fill="#141210"/>
+    <line x1="30" y1="18" x2="30" y2="90" stroke="#e8dcc0" stroke-dasharray="3 3" stroke-width="1" opacity="0.5"/>
+  </g>
+
+  <g transform="translate(660, 230)">
+    <ellipse cx="20" cy="20" rx="22" ry="8" fill="#1a1512"/>
+    <rect x="5" y="5" width="30" height="18" fill="#8a3d24" rx="2"/>
+    <line x1="5" y1="10" x2="35" y2="10" stroke="#6e3019" stroke-width="0.5"/>
+    <line x1="5" y1="14" x2="35" y2="14" stroke="#6e3019" stroke-width="0.5"/>
+    <line x1="5" y1="18" x2="35" y2="18" stroke="#6e3019" stroke-width="0.5"/>
+  </g>
+  <g transform="translate(710, 240)">
+    <ellipse cx="18" cy="18" rx="20" ry="7" fill="#1a1512"/>
+    <rect x="5" y="5" width="26" height="16" fill="#e8dcc0" rx="2"/>
+    <line x1="5" y1="10" x2="31" y2="10" stroke="#c9a887" stroke-width="0.5"/>
+    <line x1="5" y1="14" x2="31" y2="14" stroke="#c9a887" stroke-width="0.5"/>
+  </g>
+
+  <g transform="translate(180, 290)" opacity="0.9">
+    <path d="M 0 0 L 60 0 L 60 4 Q 30 10 0 4 Z" fill="#a8762a"/>
+    <path d="M 60 0 L 80 -20 L 85 -18 L 64 2 Z" fill="#e8dcc0"/>
+  </g>
+
+  <g opacity="0.15">
+    <path d="M 100 260 Q 300 270 500 255 Q 650 265 780 258" stroke="#e8dcc0" stroke-width="1" fill="none"/>
+    <path d="M 100 275 Q 300 285 500 270 Q 650 280 780 273" stroke="#e8dcc0" stroke-width="1" fill="none"/>
+  </g>
+</svg>

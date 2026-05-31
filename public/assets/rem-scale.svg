@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 650" role="img" aria-label="Generic plush scale reference">
+  <defs>
+    <radialGradient id="cloth" cx="42%" cy="32%" r="72%">
+      <stop offset="0%" stop-color="#5b9384"/>
+      <stop offset="58%" stop-color="#3a6b5e"/>
+      <stop offset="100%" stop-color="#203c35"/>
+    </radialGradient>
+  </defs>
+  <rect width="520" height="650" fill="#171411"/>
+  <g opacity=".45" stroke="#ede2c8" stroke-width="1">
+    <path d="M62 86v470M62 556h82M62 86h82"/>
+    <path d="M62 134h42M62 182h42M62 230h42M62 278h42M62 326h42M62 374h42M62 422h42M62 470h42M62 518h42"/>
+  </g>
+  <text x="42" y="590" fill="#c8892e" font-family="monospace" font-size="24" letter-spacing="3">10 IN</text>
+  <ellipse cx="320" cy="580" rx="116" ry="26" fill="#080706" opacity=".55"/>
+  <g transform="translate(118 62) scale(.78)">
+    <path d="M178 100c-22-58-11-88 18-92 30-4 55 42 70 93h-88Z" fill="url(#cloth)"/>
+    <path d="M342 100c22-58 11-88-18-92-30-4-55 42-70 93h88Z" fill="url(#cloth)"/>
+    <circle cx="260" cy="194" r="112" fill="url(#cloth)"/>
+    <ellipse cx="260" cy="408" rx="132" ry="156" fill="url(#cloth)"/>
+    <path d="M260 298v225" stroke="#ede2c8" stroke-width="3" stroke-dasharray="8 8" opacity=".55"/>
+    <ellipse cx="221" cy="194" rx="15" ry="18" fill="#100e0c"/>
+    <ellipse cx="299" cy="194" rx="15" ry="18" fill="#100e0c"/>
+    <path d="M248 226q12 13 24 0" fill="none" stroke="#100e0c" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="205" cy="557" rx="48" ry="23" fill="#203c35"/>
+    <ellipse cx="315" cy="557" rx="48" ry="23" fill="#203c35"/>
+  </g>
+</svg>

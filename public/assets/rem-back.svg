@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 650" role="img" aria-label="Generic teal plush back view">
+  <defs>
+    <radialGradient id="cloth" cx="42%" cy="32%" r="72%">
+      <stop offset="0%" stop-color="#4f8778"/>
+      <stop offset="58%" stop-color="#345f54"/>
+      <stop offset="100%" stop-color="#1c362f"/>
+    </radialGradient>
+    <pattern id="grain" width="10" height="10" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r=".7" fill="#ede2c8" opacity=".05"/>
+      <circle cx="8" cy="6" r=".6" fill="#ede2c8" opacity=".05"/>
+    </pattern>
+  </defs>
+  <rect width="520" height="650" fill="#171411"/>
+  <rect width="520" height="650" fill="url(#grain)"/>
+  <ellipse cx="260" cy="596" rx="150" ry="30" fill="#080706" opacity=".55"/>
+  <path d="M178 102c-24-62-10-92 20-95 28-2 52 43 68 95h-88Z" fill="url(#cloth)"/>
+  <path d="M342 102c24-62 10-92-20-95-28-2-52 43-68 95h88Z" fill="url(#cloth)"/>
+  <circle cx="260" cy="194" r="112" fill="url(#cloth)"/>
+  <ellipse cx="260" cy="408" rx="132" ry="156" fill="url(#cloth)"/>
+  <path d="M260 98v448" stroke="#ede2c8" stroke-width="3" stroke-dasharray="9 8" opacity=".5"/>
+  <path d="M190 278q70 24 140 0" fill="none" stroke="#ede2c8" stroke-width="2" stroke-dasharray="5 7" opacity=".32"/>
+  <rect x="282" y="346" width="68" height="42" rx="5" fill="#c8892e"/>
+  <path d="M292 365h47M292 374h34" stroke="#100e0c" stroke-opacity=".42" stroke-width="2"/>
+  <path d="M144 358q-42 30-34 88 7 46 52 62" fill="none" stroke="#345f54" stroke-width="52" stroke-linecap="round"/>
+  <path d="M376 358q42 30 34 88-7 46-52 62" fill="none" stroke="#345f54" stroke-width="52" stroke-linecap="round"/>
+  <ellipse cx="205" cy="557" rx="48" ry="23" fill="#1c362f"/>
+  <ellipse cx="315" cy="557" rx="48" ry="23" fill="#1c362f"/>
+</svg>
