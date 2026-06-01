@@ -6,6 +6,7 @@
   const DISPATCH_MODAL_DONE_KEY = "merchlock_dispatch_modal_done_v2";
   const DISPATCH_MODAL_SESSION_KEY = "merchlock_dispatch_modal_session_v2";
   const ARTIST_CALL_KEY = "merchlock_artist_call_v1";
+  const ROYALTY_RATE = 0.3;
   const CHECKOUT_PAYMENT_ENABLED = false;
   const DROP_STATUS = "in-stock";
   const VOTE_CLOSE_AT = new Date("2026-12-31T23:59:00-05:00").getTime();
@@ -21,57 +22,14 @@
     },
   };
 
-  /* ============ Shopify Storefront API ============ */
-  const SHOPIFY_API_VERSION = "2025-07";
-  const SHOPIFY_STORE_PERMANENT_DOMAIN = "perfect-pixel-project-i3n6p.myshopify.com";
-  const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
-  const SHOPIFY_STOREFRONT_TOKEN = "4b06363f9a7e41aea066d4466000e6fa";
-
-  async function storefrontApiRequest(query, variables) {
-    const res = await fetch(SHOPIFY_STOREFRONT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Storefront-Access-Token": SHOPIFY_STOREFRONT_TOKEN,
-      },
-      body: JSON.stringify({ query, variables }),
-    });
-    if (!res.ok) throw new Error("Shopify HTTP " + res.status);
-    const json = await res.json();
-    if (json.errors) throw new Error(json.errors.map(e => e.message).join(", "));
-    return json;
-  }
-
-  function formatCheckoutUrl(url) {
-    try {
-      const u = new URL(url);
-      u.searchParams.set("channel", "online_store");
-      return u.toString();
-    } catch { return url; }
-  }
-
   async function createShopifyCheckout(cart) {
-    const lines = cart
-      .map(it => {
-        const p = PRODUCT_CATALOG[it.sku];
-        return p && p.shopifyVariantId
-          ? { quantity: it.qty, merchandiseId: p.shopifyVariantId }
-          : null;
-      })
-      .filter(Boolean);
-    if (!lines.length) throw new Error("No purchasable items in cart.");
-    const mutation = `mutation cartCreate($input: CartInput!) {
-      cartCreate(input: $input) {
-        cart { id checkoutUrl }
-        userErrors { field message }
-      }
-    }`;
-    const data = await storefrontApiRequest(mutation, { input: { lines } });
-    const errs = data?.data?.cartCreate?.userErrors || [];
-    if (errs.length) throw new Error(errs.map(e => e.message).join(", "));
-    const checkoutUrl = data?.data?.cartCreate?.cart?.checkoutUrl;
-    if (!checkoutUrl) throw new Error("Shopify did not return a checkout URL.");
-    return formatCheckoutUrl(checkoutUrl);
+    const payload = await apiJson("/api/checkout/create", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cart }),
+    });
+    if (!payload.checkoutUrl) throw new Error("Shopify did not return a checkout URL.");
+    return payload.checkoutUrl;
   }
 
 
@@ -92,7 +50,7 @@
     "first drop · rem plushie · ready to ship",
     "no preorder wait",
     "vote on the next plushie · 5 heroes",
-    "20% royalty to artist on every unit",
+    "30% of net sales revenue to the artist",
     "designed by @DIECHANCE · the catlock guy",
   ];
 
@@ -178,7 +136,7 @@
       shipping,
       tax,
       total,
-      royalty: subtotal * 0.2,
+      royalty: subtotal * ROYALTY_RATE,
     };
   }
 
@@ -608,7 +566,7 @@
         <div class="grand"><span class="label">Total</span><span class="val">${formatMoney(totals.total)}</span></div>
         <div class="royalty-mini">
           <div class="lab">◈ ARTIST ROYALTY</div>
-          <p>~${formatMoney(totals.royalty)} of this order goes directly to <a href="index.html#artist">${artist}</a>.</p>
+          <p>Estimated at 30% of net sales revenue for <a href="index.html#artist">${artist}</a>. Final royalties exclude tax, shipping, processing fees, refunds/returns, and customs duties.</p>
         </div>
         <div class="checkout-btn">
           <button type="button" class="jp rust jp-btn" data-shopify-checkout style="font-size:14px;width:100%;display:block;text-align:center;border:0;cursor:pointer;">
@@ -692,7 +650,7 @@
           <div class="grand"><span class="label">Total</span><span class="val">${formatMoney(totals.total)}</span></div>
         </div>
         <div class="royalty-mini">
-          <div class="lab">◈ ${formatMoney(totals.royalty)} TO @DIECHANCE</div>
+          <div class="lab">◈ EST. ${formatMoney(totals.royalty)} NET-SALES ROYALTY TO @DIECHANCE</div>
         </div>
       </div>
     `;
@@ -766,6 +724,8 @@
         if (feedback) feedback.textContent = "Cart is empty.";
         return;
       }
+      const user = await requireSteam(feedback);
+      if (!user) return;
       const label = btn.querySelector(".pt");
       const original = label ? label.textContent : "";
       if (label) label.textContent = "OPENING…";
@@ -795,6 +755,8 @@
         if (feedback) feedback.textContent = "Cart is empty. Add the Rem plushie before checkout.";
         return;
       }
+      const user = await requireSteam(feedback);
+      if (!user) return;
       try {
         btn.disabled = true;
         const url = await createShopifyCheckout(readCart());
@@ -807,6 +769,581 @@
         btn.disabled = false;
       }
     });
+  }
+
+  /* ============ Redeem / admin ============ */
+  const ADMIN_TOKEN_KEY = "merchlock_redeem_admin_token_v1";
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  async function apiJson(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: options.headers || {},
+    });
+    const text = await response.text();
+    let payload = null;
+    try {
+      payload = text ? JSON.parse(text) : null;
+    } catch {
+      payload = { ok: false, error: text || "Server returned an unreadable response." };
+    }
+
+    if (!response.ok || payload?.ok === false) {
+      const error = new Error(payload?.error || `Request failed (${response.status})`);
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
+    }
+
+    return payload;
+  }
+
+  function formatApiError(error) {
+    const payload = error?.payload || {};
+    const missing = Array.isArray(payload.missing) && payload.missing.length
+      ? ` Missing env: ${payload.missing.join(", ")}.`
+      : "";
+    return `${error?.message || "Something went wrong."}${missing}`;
+  }
+
+  let sessionCache = null;
+  let sessionPromise = null;
+
+  function currentPath() {
+    return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  }
+
+  function steamLoginHref(returnPath = currentPath()) {
+    return `/api/auth/steam/start?return=${encodeURIComponent(returnPath)}`;
+  }
+
+  async function loadSession({ force = false } = {}) {
+    if (sessionCache && !force) return sessionCache;
+    if (sessionPromise && !force) return sessionPromise;
+    sessionPromise = apiJson("/api/session")
+      .then(payload => {
+        sessionCache = payload;
+        return payload;
+      })
+      .catch(error => {
+        sessionCache = { ok: false, user: null, error: formatApiError(error) };
+        return sessionCache;
+      })
+      .finally(() => {
+        sessionPromise = null;
+      });
+    return sessionPromise;
+  }
+
+  function accountAvatar(user) {
+    const image = user?.avatarUrl ? `style="background-image:url('${escapeHtml(user.avatarUrl)}')"` : "";
+    return `<span class="steam-avatar" ${image} aria-hidden="true"></span>`;
+  }
+
+  function renderSteamAuth(payload) {
+    document.querySelectorAll("[data-steam-auth]").forEach(host => {
+      const user = payload?.user;
+      if (user) {
+        host.innerHTML = `
+          <a class="steam-profile" href="inventory.html" title="View Merchlock inventory">
+            ${accountAvatar(user)}
+            <span>
+              <b>${escapeHtml(user.personaName || "Steam user")}</b>
+              <small>${escapeHtml(user.steamId || "")}</small>
+            </span>
+          </a>
+          <button class="steam-logout" type="button" data-steam-logout>LOG OUT</button>
+        `;
+      } else {
+        host.innerHTML = `
+          <a class="steam-login" href="${escapeHtml(steamLoginHref())}" data-steam-login>
+            <span class="steam-mark" aria-hidden="true"></span>
+            <span>Sign in with Steam</span>
+          </a>
+        `;
+      }
+    });
+  }
+
+  function wireSteamAuth() {
+    if (!document.querySelector("[data-steam-auth]")) return;
+    renderSteamAuth({ user: null });
+    loadSession().then(renderSteamAuth);
+    document.addEventListener("click", async e => {
+      const logout = e.target.closest?.("[data-steam-logout]");
+      if (!logout) return;
+      e.preventDefault();
+      logout.disabled = true;
+      try {
+        await apiJson("/api/auth/logout", { method: "POST" });
+        sessionCache = { ok: true, user: null };
+        renderSteamAuth(sessionCache);
+        renderInventoryPage();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        logout.disabled = false;
+      }
+    });
+  }
+
+  async function requireSteam(feedback, message = "Sign in with Steam before checkout so the plushie can be added to your Merchlock inventory.") {
+    const session = await loadSession();
+    if (session?.user) return session.user;
+    if (feedback) {
+      feedback.innerHTML = `
+        ${escapeHtml(message)}
+        <a class="inline-steam-link" href="${escapeHtml(steamLoginHref())}">Sign in with Steam</a>
+      `;
+    }
+    return null;
+  }
+
+  function inventoryItemImage(item) {
+    const path = item?.imagePath || "assets/rem-detail.svg";
+    return `style="background-image:url('${escapeHtml(path)}')"`;
+  }
+
+  async function renderInventoryPage() {
+    const host = document.querySelector("[data-inventory]");
+    if (!host) return;
+
+    host.innerHTML = `<div class="inventory-loading">Loading inventory...</div>`;
+    const session = await loadSession({ force: true });
+    renderSteamAuth(session);
+
+    if (!session?.user) {
+      host.innerHTML = `
+        <section class="inventory-state">
+          <div class="redeem-kicker">STEAM REQUIRED</div>
+          <h1>Your Merchlock inventory.</h1>
+          <p>Sign in with Steam to connect future plush purchases and redeem rewards to your Merchlock account.</p>
+          <a class="jp rust jp-btn" href="${escapeHtml(steamLoginHref("/inventory.html"))}">
+            <span class="pb"></span>
+            <span class="pt">SIGN IN WITH STEAM</span>
+          </a>
+        </section>
+      `;
+      return;
+    }
+
+    try {
+      const payload = await apiJson("/api/inventory");
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      host.innerHTML = `
+        <section class="inventory-account">
+          ${accountAvatar(payload.user)}
+          <div>
+            <div class="inventory-label">Connected Steam account</div>
+            <h1>${escapeHtml(payload.user?.personaName || "Steam user")}</h1>
+            <p>${escapeHtml(payload.user?.steamId || "")}</p>
+          </div>
+        </section>
+        <section class="inventory-panel">
+          <div class="admin-panel-head">
+            <div>
+              <h2>Your items</h2>
+              <p>Merchlock-owned inventory tied to your SteamID for future rewards and site features.</p>
+            </div>
+            <a class="text-link" href="redeem.html">redeem code</a>
+          </div>
+          ${
+            items.length
+              ? `<div class="inventory-grid">${items.map(item => `
+                  <article class="inventory-card">
+                    <div class="inventory-art" ${inventoryItemImage(item)}></div>
+                    <div class="inventory-card-body">
+                      <span class="status-pill ${escapeHtml(item.kind || "virtual")}">${escapeHtml(item.kind || "item")}</span>
+                      <h3>${escapeHtml(item.title || "Inventory item")}</h3>
+                      <p>${escapeHtml(item.description || "Merchlock inventory item.")}</p>
+                      <div class="inventory-meta">Acquired ${escapeHtml(new Date(item.acquiredAt).toLocaleDateString())}</div>
+                    </div>
+                  </article>
+                `).join("")}</div>`
+              : `<div class="inventory-empty">
+                  <b>No items yet.</b>
+                  Buy the Rem plushie while signed in, or redeem the shared Rem reward code to start your inventory.
+                </div>`
+          }
+        </section>
+      `;
+    } catch (error) {
+      host.innerHTML = `<div class="redeem-result error">${escapeHtml(formatApiError(error))}</div>`;
+    }
+  }
+
+  function setBusyButton(button, busy, busyText = "WORKING") {
+    if (!button) return () => {};
+    const label = button.querySelector(".pt");
+    const original = label ? label.textContent : button.textContent;
+    button.disabled = busy;
+    if (label) label.textContent = busy ? busyText : original;
+    return () => {
+      button.disabled = false;
+      if (label) label.textContent = original;
+    };
+  }
+
+  function wireRedeemPage() {
+    const form = document.querySelector("[data-redeem-form]");
+    if (!form) return;
+    const input = form.querySelector("[data-redeem-code]");
+    const result = document.querySelector("[data-redeem-result]");
+    const account = document.querySelector("[data-redeem-account]");
+    const button = form.querySelector("button[type='submit']");
+
+    loadSession().then(session => {
+      renderSteamAuth(session);
+      if (!account) return;
+      if (session?.user) {
+        account.innerHTML = `
+          ${accountAvatar(session.user)}
+          <span>
+            <b>Redeeming as ${escapeHtml(session.user.personaName || "Steam user")}</b>
+            Shared rewards attach to SteamID ${escapeHtml(session.user.steamId || "")}.
+          </span>
+        `;
+        form.classList.remove("is-disabled");
+      } else {
+        account.innerHTML = `
+          <span class="steam-avatar" aria-hidden="true"></span>
+          <span>
+            <b>Steam sign-in required.</b>
+            Sign in before redeeming so the reward lands in your Merchlock inventory.
+          </span>
+          <a class="inline-steam-link" href="${escapeHtml(steamLoginHref("/redeem.html"))}">Sign in with Steam</a>
+        `;
+      }
+    });
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const user = await requireSteam(result, "Sign in with Steam before redeeming so the mod reward can be added to your Merchlock inventory.");
+      if (!user) return;
+      const code = input?.value.trim();
+      if (!code) {
+        if (result) {
+          result.className = "redeem-result error";
+          result.textContent = "Enter the code from your plush insert.";
+        }
+        input?.focus();
+        return;
+      }
+
+      const resetButton = setBusyButton(button, true, "CHECKING");
+      if (result) {
+        result.className = "redeem-result";
+        result.textContent = "Checking code...";
+      }
+
+      try {
+        const payload = await apiJson("/api/redeem", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+
+        if (result) {
+          result.className = "redeem-result success";
+          const inventoryNote = payload.inventoryItem
+            ? `<p><b>${escapeHtml(payload.inventoryItem.title || "Reward")}</b> ${payload.alreadyInInventory || payload.alreadyRedeemed ? "is already in your Merchlock inventory." : "was added to your Merchlock inventory."}</p>`
+            : "";
+          result.innerHTML = `
+            <div class="redeem-success-title">${escapeHtml(payload.title || "Download unlocked")}</div>
+            ${inventoryNote}
+            <p>${escapeHtml(payload.description || "Your private fan mod download is ready.")}</p>
+            <a class="jp teal jp-btn redeem-download" href="${escapeHtml(payload.downloadUrl)}" target="_blank" rel="noopener">
+              <span class="pb"></span>
+              <span class="pt">DOWNLOAD MOD</span>
+            </a>
+            <a class="text-link redeem-inventory-link" href="inventory.html">view inventory</a>
+            <div class="redeem-expiry">Signed link expires in about one hour.</div>
+          `;
+        }
+      } catch (error) {
+        if (result) {
+          result.className = "redeem-result error";
+          result.textContent = formatApiError(error);
+        }
+      } finally {
+        resetButton();
+      }
+    });
+  }
+
+  function wireAdminRedeem() {
+    const root = document.querySelector("[data-admin-redeem]");
+    if (!root) return;
+
+    const tokenInput = document.querySelector("[data-admin-token]");
+    const refreshBtn = document.querySelector("[data-admin-refresh]");
+    const feedback = document.querySelector("[data-admin-feedback]");
+    const modForm = document.querySelector("[data-admin-mod-form]");
+    const codeForm = document.querySelector("[data-admin-code-form]");
+    const sharedForm = document.querySelector("[data-admin-shared-form]");
+    const disableForm = document.querySelector("[data-admin-disable-form]");
+    const codesBody = document.querySelector("[data-admin-codes]");
+    const output = document.querySelector("[data-admin-code-output]");
+    const downloadCsvBtn = document.querySelector("[data-admin-download-csv]");
+    let latestCsv = "";
+
+    const savedToken = (() => {
+      try { return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ""; } catch { return ""; }
+    })();
+    if (tokenInput && savedToken) tokenInput.value = savedToken;
+
+    function token() {
+      return String(tokenInput?.value || "").trim();
+    }
+
+    function setFeedback(message, type = "") {
+      if (!feedback) return;
+      feedback.textContent = message;
+      feedback.dataset.status = type;
+    }
+
+    function adminHeaders(extra = {}) {
+      return {
+        authorization: `Bearer ${token()}`,
+        ...extra,
+      };
+    }
+
+    function rememberToken() {
+      try {
+        if (token()) sessionStorage.setItem(ADMIN_TOKEN_KEY, token());
+      } catch {}
+    }
+
+    function renderAdminLists(data) {
+      const mods = Array.isArray(data.mods) ? data.mods : [];
+      const codes = Array.isArray(data.codes) ? data.codes : [];
+      const inventoryItems = Array.isArray(data.inventoryItems) ? data.inventoryItems : [];
+      const claimCounts = data.claimCounts || {};
+      const modNameById = new Map(mods.map(mod => [mod.id, mod.title || mod.slug || "Mod"]));
+
+      document.querySelectorAll("[data-admin-mod-select]").forEach(select => {
+        select.innerHTML = mods.length
+          ? mods.map(mod => `<option value="${escapeHtml(mod.id)}">${escapeHtml(mod.title || mod.slug)}</option>`).join("")
+          : `<option value="">No mod files yet</option>`;
+      });
+
+      document.querySelectorAll("[data-admin-item-select]").forEach(select => {
+        select.innerHTML = inventoryItems.length
+          ? inventoryItems.map(item => `<option value="${escapeHtml(item.slug)}">${escapeHtml(item.title || item.slug)}</option>`).join("")
+          : `<option value="rem_bag_skin">Rem Bag Skin</option>`;
+      });
+
+      if (codesBody) {
+        codesBody.innerHTML = codes.length
+          ? codes.map(code => {
+              const safeCode = `${code.code_prefix || "CODE"}...${code.code_suffix || "----"}`;
+              const codeType = code.code_type || "one_time_download";
+              const reward = code.inventory_item_slug || "-";
+              const uses = codeType === "shared_reward_download"
+                ? `${claimCounts[code.id] || code.shared_uses || 0} accounts`
+                : (code.status === "redeemed" ? "1" : "0");
+              return `
+                <tr>
+                  <td><button class="text-link mono" type="button" data-copy-value="${escapeHtml(code.batch_id)}">${escapeHtml(String(code.batch_id || "").slice(0, 8))}</button></td>
+                  <td><span class="mono">${escapeHtml(safeCode)}</span></td>
+                  <td>${escapeHtml(codeType.replace(/_/g, " "))}</td>
+                  <td><span class="status-pill ${escapeHtml(code.status || "active")}">${escapeHtml(code.status || "active")}</span></td>
+                  <td>${escapeHtml(reward)}</td>
+                  <td>${escapeHtml(uses)}</td>
+                  <td>${escapeHtml(modNameById.get(code.mod_file_id) || String(code.mod_file_id || "").slice(0, 8))}</td>
+                </tr>
+              `;
+            }).join("")
+          : `<tr><td colspan="7">No codes generated yet.</td></tr>`;
+
+        codesBody.querySelectorAll("[data-copy-value]").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            const value = btn.getAttribute("data-copy-value") || "";
+            try {
+              await navigator.clipboard.writeText(value);
+              setFeedback("Batch ID copied.", "success");
+            } catch {
+              setFeedback(value, "success");
+            }
+          });
+        });
+      }
+    }
+
+    async function loadAdmin() {
+      if (!token()) {
+        setFeedback("Enter the admin token first.", "error");
+        tokenInput?.focus();
+        return;
+      }
+      rememberToken();
+      const reset = setBusyButton(refreshBtn, true, "LOADING");
+      try {
+        const data = await apiJson("/api/admin/codes", {
+          method: "GET",
+          headers: adminHeaders(),
+        });
+        renderAdminLists(data);
+        setFeedback("Admin data loaded.", "success");
+      } catch (error) {
+        setFeedback(formatApiError(error), "error");
+      } finally {
+        reset();
+      }
+    }
+
+    refreshBtn?.addEventListener("click", loadAdmin);
+
+    modForm?.addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!token()) {
+        setFeedback("Enter the admin token first.", "error");
+        tokenInput?.focus();
+        return;
+      }
+
+      const submit = modForm.querySelector("button[type='submit']");
+      const reset = setBusyButton(submit, true, "SAVING");
+      try {
+        rememberToken();
+        const data = new FormData(modForm);
+        await apiJson("/api/admin/mods", {
+          method: "POST",
+          headers: adminHeaders(),
+          body: data,
+        });
+        modForm.reset();
+        setFeedback("Mod file registered.", "success");
+        await loadAdmin();
+      } catch (error) {
+        setFeedback(formatApiError(error), "error");
+      } finally {
+        reset();
+      }
+    });
+
+    codeForm?.addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!token()) {
+        setFeedback("Enter the admin token first.", "error");
+        tokenInput?.focus();
+        return;
+      }
+
+      const submit = codeForm.querySelector("button[type='submit']");
+      const reset = setBusyButton(submit, true, "MAKING");
+      try {
+        rememberToken();
+        const data = new FormData(codeForm);
+        const payload = await apiJson("/api/admin/codes/generate", {
+          method: "POST",
+          headers: adminHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            modFileId: data.get("modFileId"),
+            quantity: data.get("quantity"),
+            prefix: data.get("prefix"),
+            notes: data.get("notes"),
+          }),
+        });
+        latestCsv = payload.csv || "";
+        if (output) output.value = latestCsv || (payload.codes || []).join("\n");
+        if (downloadCsvBtn) downloadCsvBtn.disabled = !latestCsv;
+        setFeedback(`Generated ${payload.codes?.length || 0} code(s). Export the CSV now.`, "success");
+        await loadAdmin();
+      } catch (error) {
+        setFeedback(formatApiError(error), "error");
+      } finally {
+        reset();
+      }
+    });
+
+    sharedForm?.addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!token()) {
+        setFeedback("Enter the admin token first.", "error");
+        tokenInput?.focus();
+        return;
+      }
+
+      const submit = sharedForm.querySelector("button[type='submit']");
+      const reset = setBusyButton(submit, true, "SAVING");
+      try {
+        rememberToken();
+        const data = new FormData(sharedForm);
+        await apiJson("/api/admin/codes/shared", {
+          method: "POST",
+          headers: adminHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            code: data.get("code"),
+            modFileId: data.get("modFileId"),
+            inventoryItemSlug: data.get("inventoryItemSlug"),
+            notes: data.get("notes"),
+            active: data.get("active") === "on",
+          }),
+        });
+        setFeedback("Shared reward code saved.", "success");
+        await loadAdmin();
+      } catch (error) {
+        setFeedback(formatApiError(error), "error");
+      } finally {
+        reset();
+      }
+    });
+
+    disableForm?.addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!token()) {
+        setFeedback("Enter the admin token first.", "error");
+        tokenInput?.focus();
+        return;
+      }
+
+      const submit = disableForm.querySelector("button[type='submit']");
+      const reset = setBusyButton(submit, true, "DISABLING");
+      try {
+        rememberToken();
+        const data = new FormData(disableForm);
+        await apiJson("/api/admin/codes/disable", {
+          method: "POST",
+          headers: adminHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            codeId: data.get("codeId"),
+            batchId: data.get("batchId"),
+          }),
+        });
+        disableForm.reset();
+        setFeedback("Code status updated.", "success");
+        await loadAdmin();
+      } catch (error) {
+        setFeedback(formatApiError(error), "error");
+      } finally {
+        reset();
+      }
+    });
+
+    downloadCsvBtn?.addEventListener("click", () => {
+      if (!latestCsv) return;
+      const blob = new Blob([latestCsv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `merchlock-redeem-codes-${Date.now()}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    if (token()) loadAdmin();
   }
 
 
@@ -828,6 +1365,7 @@
     wireEmailModal();
     wireArtistCall();
     wireNotifyDrop();
+    wireSteamAuth();
     wireBuyNow();
     wireWishlist();
     wireSmoothScroll();
@@ -835,5 +1373,8 @@
     renderCheckoutSummary();
     wireShipOptions();
     wirePlaceOrder();
+    wireRedeemPage();
+    wireAdminRedeem();
+    renderInventoryPage();
   });
 })();

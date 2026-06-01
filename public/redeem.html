@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Redeem - MERCHLOCK</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Redeem a Merchlock shared reward code for a private Deadlock fan mod download and Merchlock inventory item." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="redeem">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div style="display:flex; align-items:center; gap:24px;">
+      <a href="index.html" aria-label="Home">
+        <span class="jp teal" style="font-size:14px;">
+          <span class="pb"></span>
+          <span class="pt">MERCHLOCK</span>
+        </span>
+      </a>
+    </div>
+    <div class="nav-links">
+      <a href="index.html#first-drop">Shop</a>
+      <a href="index.html#vote">Vote</a>
+      <a href="redeem.html" class="active">Redeem</a>
+      <a href="inventory.html">Inventory</a>
+      <a href="about.html">About</a>
+    </div>
+    <div class="nav-right">
+      <div class="steam-auth" data-steam-auth></div>
+      <a class="cart-badge" href="cart.html">CART - <span data-cart-count aria-live="polite" aria-atomic="true">0</span></a>
+    </div>
+  </div>
+</nav>
+
+<main id="main" class="redeem-shell">
+  <div class="page">
+    <section class="redeem-hero">
+      <div>
+        <div class="redeem-kicker">STEAM REWARD CODE</div>
+        <h1>Unlock your Deadlock mod.</h1>
+        <p>
+          Enter the shared Rem reward code. A valid code adds the bag-skin reward to your Merchlock inventory and unlocks a private signed fan-mod download.
+        </p>
+      </div>
+      <div class="redeem-proof">
+        <span class="founder-pfp" aria-hidden="true"></span>
+        <span>
+          <b>Community drops, real extras.</b>
+          Codes are tied to Steam accounts, private files, and signed download links.
+        </span>
+      </div>
+    </section>
+
+    <section class="redeem-grid">
+      <div class="redeem-panel">
+        <h2>Redeem code</h2>
+        <p class="redeem-muted">Shared reward codes can be used by many Steam accounts, but each Steam account can claim the reward once. Download links expire after one hour.</p>
+        <div class="redeem-account" data-redeem-account></div>
+        <form class="redeem-form" data-redeem-form novalidate>
+          <label for="redeem-code">Insert code</label>
+          <div class="redeem-code-row">
+            <input id="redeem-code" data-redeem-code type="text" autocomplete="off" spellcheck="false" placeholder="ML-XXXX-XXXX-XXXX" required />
+            <button class="jp rust jp-btn" type="submit">
+              <span class="pb"></span>
+              <span class="pt">UNLOCK</span>
+            </button>
+          </div>
+        </form>
+        <div class="redeem-result" data-redeem-result role="status" aria-live="polite"></div>
+      </div>
+
+      <aside class="redeem-panel redeem-steps">
+        <h2>How to use it</h2>
+        <ol>
+          <li>Redeem the code from your plush insert.</li>
+          <li>The reward appears in your Merchlock inventory.</li>
+          <li>Download the mod zip from the private signed link.</li>
+          <li>Open the included README and follow the install notes.</li>
+          <li>Back up your local files before changing anything.</li>
+        </ol>
+        <div class="redeem-disclaimer">
+          Unofficial fan mod. Merchlock is not affiliated with the game's developer or publisher. Game updates can break local mods.
+        </div>
+      </aside>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="page">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <span class="jp ink" style="font-size:14px;"><span class="pb"></span><span class="pt">MERCHLOCK</span></span>
+        <p class="foot-intro">
+          Artist-first Deadlock community merch. Ready-to-ship drops, shared reward codes, and revenue routed back to human creators.
+        </p>
+      </div>
+      <div class="foot-col">
+        <h4>Shop</h4>
+        <a href="index.html#first-drop">All products</a>
+        <a href="index.html#vote">Vote</a>
+        <a href="redeem.html">Redeem</a>
+        <a href="inventory.html">Inventory</a>
+      </div>
+      <div class="foot-col">
+        <h4>Artists</h4>
+        <a href="about.html#voting">Royalties</a>
+        <a href="index.html#artist">Featured artist</a>
+      </div>
+      <div class="foot-col">
+        <h4>Status</h4>
+        <span class="foot-note">Admin tools are hidden and token protected.</span>
+      </div>
+    </div>
+    <div class="foot-bar">
+      <span>2026 Merchlock - Unofficial fan merch</span>
+      <span>Not affiliated with the game's developer or publisher</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

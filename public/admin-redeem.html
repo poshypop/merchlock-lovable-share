@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Redeem Admin - MERCHLOCK</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-page="admin-redeem" data-admin-redeem>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div style="display:flex; align-items:center; gap:24px;">
+      <a href="index.html" aria-label="Home">
+        <span class="jp teal" style="font-size:14px;">
+          <span class="pb"></span>
+          <span class="pt">MERCHLOCK</span>
+        </span>
+      </a>
+    </div>
+    <div class="nav-links">
+      <a href="redeem.html">Redeem</a>
+      <a href="inventory.html">Inventory</a>
+      <a href="index.html#first-drop">Shop</a>
+      <a href="about.html">About</a>
+    </div>
+    <div class="nav-right">
+      <span class="cart-badge">ADMIN</span>
+    </div>
+  </div>
+</nav>
+
+<main id="main" class="admin-shell">
+  <div class="page">
+    <section class="admin-hero">
+      <div>
+        <div class="redeem-kicker">HIDDEN ADMIN</div>
+        <h1>Redeem code manager.</h1>
+        <p>Register private mod files, generate one-time insert codes, export plaintext codes once, and disable codes if needed.</p>
+      </div>
+      <div class="admin-token-panel">
+        <label for="admin-token">Admin token</label>
+        <div class="admin-token-row">
+          <input id="admin-token" data-admin-token type="password" autocomplete="current-password" placeholder="REDEEM_ADMIN_TOKEN" />
+          <button class="jp amber jp-btn" type="button" data-admin-refresh>
+            <span class="pb"></span>
+            <span class="pt">LOAD</span>
+          </button>
+        </div>
+        <p>Uses the server-side token only. Codes are hashed before storage.</p>
+      </div>
+    </section>
+
+    <div class="admin-feedback" data-admin-feedback role="status" aria-live="polite"></div>
+
+    <section class="admin-grid">
+      <form class="admin-panel admin-form" data-admin-mod-form>
+        <h2>Register mod file</h2>
+        <p>Upload a zip into private Supabase Storage or register a path that already exists in the private bucket.</p>
+        <label>Title <input name="title" type="text" placeholder="Rem Catlock portrait mod" required /></label>
+        <label>Slug <input name="slug" type="text" placeholder="rem-catlock-mod" /></label>
+        <label>Description <textarea name="description" rows="3" placeholder="Private Deadlock fan mod for Rem plush buyers."></textarea></label>
+        <label>Private storage path <input name="storagePath" type="text" placeholder="mods/rem/rem-catlock.zip" /></label>
+        <label>Zip file <input name="file" type="file" accept=".zip,.rar,.7z,.pak,.vpk,application/zip" /></label>
+        <button class="jp rust jp-btn" type="submit">
+          <span class="pb"></span>
+          <span class="pt">SAVE MOD</span>
+        </button>
+      </form>
+
+      <form class="admin-panel admin-form" data-admin-code-form>
+        <h2>Generate code batch</h2>
+        <p>Plaintext codes only show here at generation time. Export the CSV before leaving this page.</p>
+        <label>Mod file <select name="modFileId" data-admin-mod-select required></select></label>
+        <label>Quantity <input name="quantity" type="number" min="1" max="500" value="25" required /></label>
+        <label>Prefix <input name="prefix" type="text" value="ML" maxlength="10" /></label>
+        <label>Batch note <input name="notes" type="text" placeholder="Rem plush wave 01" /></label>
+        <button class="jp amber jp-btn" type="submit">
+          <span class="pb"></span>
+          <span class="pt">GENERATE</span>
+        </button>
+      </form>
+    </section>
+
+    <section class="admin-panel">
+      <form class="admin-form shared-code-form" data-admin-shared-form>
+        <h2>Shared reward code</h2>
+        <p>Use this for the Rem bag-skin reward: one shared code can be redeemed by many Steam accounts, but only once per account.</p>
+        <label>Shared code <input name="code" type="text" placeholder="REM-BAG-SKIN" required /></label>
+        <label>Mod file <select name="modFileId" data-admin-mod-select required></select></label>
+        <label>Inventory reward <select name="inventoryItemSlug" data-admin-item-select required></select></label>
+        <label>Admin note <input name="notes" type="text" placeholder="Rem bag skin shared reward" /></label>
+        <label class="admin-check">
+          <input name="active" type="checkbox" checked />
+          <span>Code enabled</span>
+        </label>
+        <button class="jp teal jp-btn" type="submit">
+          <span class="pb"></span>
+          <span class="pt">SAVE SHARED CODE</span>
+        </button>
+      </form>
+    </section>
+
+    <section class="admin-panel">
+      <div class="admin-panel-head">
+        <div>
+          <h2>Latest generated codes</h2>
+          <p>Export now. The backend only keeps hashed codes and safe prefixes/suffixes.</p>
+        </div>
+        <button class="text-link" type="button" data-admin-download-csv disabled>download csv</button>
+      </div>
+      <textarea class="admin-output" data-admin-code-output readonly placeholder="Generated CSV appears here once."></textarea>
+    </section>
+
+    <section class="admin-grid">
+      <form class="admin-panel admin-form" data-admin-disable-form>
+        <h2>Disable codes</h2>
+        <p>Disable a single code ID or an entire batch ID. Already redeemed codes stay logged.</p>
+        <label>Code ID <input name="codeId" type="text" placeholder="uuid" /></label>
+        <label>Batch ID <input name="batchId" type="text" placeholder="uuid" /></label>
+        <button class="jp ink jp-btn" type="submit">
+          <span class="pb"></span>
+          <span class="pt">DISABLE</span>
+        </button>
+      </form>
+
+      <div class="admin-panel">
+        <h2>Redemption status</h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Batch</th>
+                <th>Code</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Reward</th>
+                <th>Uses</th>
+                <th>Mod</th>
+              </tr>
+            </thead>
+            <tbody data-admin-codes>
+              <tr><td colspan="7">Enter admin token and load.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

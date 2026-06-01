@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Cart — MERCHLOCK</title>
+  <title>Inventory - MERCHLOCK</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="View Merchlock inventory items connected to your Steam account." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body data-page="cart">
+<body data-page="inventory">
 <a class="skip-link" href="#main">Skip to content</a>
 
-<!-- NAV -->
 <nav class="nav">
   <div class="nav-inner">
     <div style="display:flex; align-items:center; gap:24px;">
@@ -28,60 +28,50 @@
       <a href="index.html#first-drop">Shop</a>
       <a href="index.html#vote">Vote</a>
       <a href="redeem.html">Redeem</a>
-      <a href="inventory.html">Inventory</a>
+      <a href="inventory.html" class="active">Inventory</a>
       <a href="about.html">About</a>
     </div>
     <div class="nav-right">
       <div class="steam-auth" data-steam-auth></div>
-      <a class="cart-badge" href="cart.html">CART · <span data-cart-count aria-live="polite" aria-atomic="true">0</span></a>
+      <a class="cart-badge" href="cart.html">CART - <span data-cart-count aria-live="polite" aria-atomic="true">0</span></a>
     </div>
   </div>
 </nav>
 
-<main class="page-shell" id="main">
-  <div class="page">
-    <div class="cart-head">
-      <h1>Your Cart</h1>
-      <div class="sub">Review before checkout</div>
-    </div>
-
-    <div class="cart-layout">
-      <div data-cart-items></div>
-      <div data-cart-summary></div>
-    </div>
+<main id="main" class="inventory-shell">
+  <div class="page" data-inventory>
+    <div class="inventory-loading">Loading inventory...</div>
   </div>
 </main>
 
-<!-- FOOTER -->
 <footer>
   <div class="page">
     <div class="foot-grid">
       <div class="foot-col">
         <span class="jp ink" style="font-size:14px;"><span class="pb"></span><span class="pt">MERCHLOCK</span></span>
         <p class="foot-intro">
-          Unofficial fan merchandise. We partner with artists who design the plushies — production runs through a manufacturing partner.
+          Merchlock inventory is tied to your SteamID and owned by Merchlock for future site rewards, mod downloads, and order-linked perks.
         </p>
       </div>
       <div class="foot-col">
         <h4>Shop</h4>
         <a href="index.html#first-drop">All products</a>
-        <a href="index.html#first-drop">Plushies</a>
         <a href="index.html#vote">Vote</a>
         <a href="redeem.html">Redeem</a>
         <a href="inventory.html">Inventory</a>
       </div>
       <div class="foot-col">
         <h4>Artists</h4>
-        <a href="index.html#artist-call">Apply</a>
         <a href="about.html#voting">Royalties</a>
+        <a href="index.html#artist">Featured artist</a>
       </div>
       <div class="foot-col">
         <h4>Status</h4>
-        <span class="foot-note">Social channels and legal pages will be linked once confirmed.</span>
+        <span class="foot-note">Steam login connects site rewards only. This is not Valve Inventory Service.</span>
       </div>
     </div>
     <div class="foot-bar">
-      <span>© 2026 Merchlock · Unofficial fan merch</span>
+      <span>2026 Merchlock - Unofficial fan merch</span>
       <span>Not affiliated with the game's developer or publisher</span>
     </div>
   </div>
