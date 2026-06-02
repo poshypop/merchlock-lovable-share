@@ -42,7 +42,7 @@
       <div>
         <div class="redeem-kicker">HIDDEN ADMIN</div>
         <h1>Redeem code manager.</h1>
-        <p>Register private mod files, generate one-time insert codes, export plaintext codes once, and disable codes if needed.</p>
+        <p>Register private files, generate one-time insert codes, export plaintext codes once, and disable codes if needed.</p>
       </div>
       <div class="admin-token-panel">
         <label for="admin-token">Admin token</label>
@@ -61,23 +61,23 @@
 
     <section class="admin-grid">
       <form class="admin-panel admin-form" data-admin-mod-form>
-        <h2>Register mod file</h2>
+        <h2>Register private file</h2>
         <p>Upload a zip into private Supabase Storage or register a path that already exists in the private bucket.</p>
-        <label>Title <input name="title" type="text" placeholder="Rem Catlock portrait mod" required /></label>
-        <label>Slug <input name="slug" type="text" placeholder="rem-catlock-mod" /></label>
-        <label>Description <textarea name="description" rows="3" placeholder="Private Deadlock fan mod for Rem plush buyers."></textarea></label>
-        <label>Private storage path <input name="storagePath" type="text" placeholder="mods/rem/rem-catlock.zip" /></label>
+        <label>Title <input name="title" type="text" placeholder="Private file title" required /></label>
+        <label>Slug <input name="slug" type="text" placeholder="private-file-title" /></label>
+        <label>Description <textarea name="description" rows="3" placeholder="Private file for a Merchlock code."></textarea></label>
+        <label>Private storage path <input name="storagePath" type="text" placeholder="drops/rem/file.zip" /></label>
         <label>Zip file <input name="file" type="file" accept=".zip,.rar,.7z,.pak,.vpk,application/zip" /></label>
         <button class="jp rust jp-btn" type="submit">
           <span class="pb"></span>
-          <span class="pt">SAVE MOD</span>
+          <span class="pt">SAVE FILE</span>
         </button>
       </form>
 
       <form class="admin-panel admin-form" data-admin-code-form>
         <h2>Generate code batch</h2>
         <p>Plaintext codes only show here at generation time. Export the CSV before leaving this page.</p>
-        <label>Mod file <select name="modFileId" data-admin-mod-select required></select></label>
+        <label>Private file <select name="modFileId" data-admin-mod-select required></select></label>
         <label>Quantity <input name="quantity" type="number" min="1" max="500" value="25" required /></label>
         <label>Prefix <input name="prefix" type="text" value="ML" maxlength="10" /></label>
         <label>Batch note <input name="notes" type="text" placeholder="Rem plush wave 01" /></label>
@@ -90,12 +90,12 @@
 
     <section class="admin-panel">
       <form class="admin-form shared-code-form" data-admin-shared-form>
-        <h2>Shared reward code</h2>
-        <p>Use this for the Rem bag-skin reward: one shared code can be redeemed by many Steam accounts, but only once per account.</p>
-        <label>Shared code <input name="code" type="text" placeholder="REM-BAG-SKIN" required /></label>
-        <label>Mod file <select name="modFileId" data-admin-mod-select required></select></label>
-        <label>Inventory reward <select name="inventoryItemSlug" data-admin-item-select required></select></label>
-        <label>Admin note <input name="notes" type="text" placeholder="Rem bag skin shared reward" /></label>
+        <h2>Shared code</h2>
+        <p>Use this for one shared code that can be redeemed by many Steam accounts, but only once per account.</p>
+        <label>Shared code <input name="code" type="text" placeholder="ML-SHARED-CODE" required /></label>
+        <label>Private file <select name="modFileId" data-admin-mod-select required></select></label>
+        <label>Inventory item <select name="inventoryItemSlug" data-admin-item-select required></select></label>
+        <label>Admin note <input name="notes" type="text" placeholder="Shared inventory item" /></label>
         <label class="admin-check">
           <input name="active" type="checkbox" checked />
           <span>Code enabled</span>
@@ -140,9 +140,9 @@
                 <th>Code</th>
                 <th>Type</th>
                 <th>Status</th>
-                <th>Reward</th>
+                <th>Item</th>
                 <th>Uses</th>
-                <th>Mod</th>
+                <th>File</th>
               </tr>
             </thead>
             <tbody data-admin-codes>

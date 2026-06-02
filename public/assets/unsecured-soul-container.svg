@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Unsecured Soul Container inspired item</title>
+  <desc id="desc">An original stylized dark teal soul container icon with amber metal details and a soft green glow.</desc>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="46%" r="58%">
+      <stop offset="0" stop-color="#b8f4d6" stop-opacity=".54"/>
+      <stop offset=".42" stop-color="#72c7ad" stop-opacity=".24"/>
+      <stop offset="1" stop-color="#0f0c09" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shell" x1="118" y1="84" x2="396" y2="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f8c78"/>
+      <stop offset=".46" stop-color="#244d45"/>
+      <stop offset="1" stop-color="#101716"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="166" y1="108" x2="360" y2="436" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd37a"/>
+      <stop offset=".55" stop-color="#c8892e"/>
+      <stop offset="1" stop-color="#8c3f22"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="none"/>
+  <circle cx="256" cy="256" r="206" fill="url(#glow)"/>
+  <ellipse cx="256" cy="421" rx="122" ry="22" fill="#050403" opacity=".46" filter="url(#soft)"/>
+  <path d="M167 151c10-55 43-86 90-86 47 0 80 31 90 86l17 91c10 53 20 104 20 146 0 36-34 59-127 59-93 0-128-23-128-59 0-42 10-93 20-146l18-91Z" fill="url(#shell)" stroke="#180806" stroke-width="13" stroke-linejoin="round"/>
+  <path d="M190 151c7-34 28-53 57-55h19c29 2 50 21 57 55H190Z" fill="#151b1a" stroke="#180806" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M178 163h148l45 231c-12 21-49 31-114 31-66 0-103-10-115-31l36-231Z" fill="#1b2f2d" opacity=".42"/>
+  <path d="M169 145h174l-12 41H181l-12-41Z" fill="url(#amber)" stroke="#180806" stroke-width="11" stroke-linejoin="round"/>
+  <path d="M143 322c28 26 67 39 114 39 47 0 86-13 114-39" fill="none" stroke="#0b0806" stroke-width="14" stroke-linecap="round"/>
+  <path d="M152 303c27 23 62 35 105 35 43 0 78-12 105-35" fill="none" stroke="#75c7ad" stroke-width="7" stroke-linecap="round" opacity=".62"/>
+  <circle cx="256" cy="244" r="82" fill="#0f1515" stroke="#180806" stroke-width="12"/>
+  <circle cx="256" cy="244" r="54" fill="#77dcc2" opacity=".9"/>
+  <circle cx="236" cy="224" r="18" fill="#dbfff1" opacity=".76"/>
+  <path d="M222 279c30 20 69 12 88-18" fill="none" stroke="#dbfff1" stroke-width="8" stroke-linecap="round" opacity=".76"/>
+  <path d="M205 121c7-15 20-28 40-32m95 223c9 33 15 64 15 86m-202 0c0-22 5-52 14-84" fill="none" stroke="#d8d8ff" stroke-width="5" stroke-linecap="round" opacity=".23"/>
+  <path d="M184 189h-42m370 0h-42M168 242h-34m378 0h-34" fill="none" stroke="#c8892e" stroke-width="9" stroke-linecap="round"/>
+  <path d="M141 188l-22-19m393 19 22-19M133 242l-30 12m409-12 30 12" fill="none" stroke="#180806" stroke-width="9" stroke-linecap="round"/>
+</svg>

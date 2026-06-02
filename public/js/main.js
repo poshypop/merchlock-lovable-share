@@ -825,7 +825,56 @@
     return `/api/auth/steam/start?return=${encodeURIComponent(returnPath)}`;
   }
 
+  function useInventoryPreview() {
+    const params = new URLSearchParams(window.location.search);
+    const local = ["127.0.0.1", "localhost"].includes(window.location.hostname);
+    return local && params.get("preview") === "steam-inventory";
+  }
+
+  function previewSession() {
+    return {
+      ok: true,
+      user: {
+        steamId: "76561198000000000",
+        personaName: "POSHYPOP",
+        avatarUrl: "assets/poshypop.png",
+        profileUrl: "https://steamcommunity.com/",
+      },
+    };
+  }
+
+  function previewInventory() {
+    return {
+      ok: true,
+      user: previewSession().user,
+      items: [
+        {
+          slug: "rem_plushie",
+          title: "Rem Plushie",
+          kind: "item",
+          description: "Ready-to-ship Merchlock plushie designed by DIECHANCE.",
+          imagePath: "assets/rem-product.png",
+          sourceType: "shopify_order",
+          acquiredAt: new Date().toISOString(),
+        },
+        {
+          slug: "rem_bag_skin",
+          title: "Rem Bag Skin",
+          kind: "item",
+          description: "Unsecured Soul Container-inspired item connected to this Steam account.",
+          imagePath: "assets/unsecured-soul-container.svg",
+          sourceType: "shared_redeem_code",
+          acquiredAt: new Date().toISOString(),
+        },
+      ],
+    };
+  }
+
   async function loadSession({ force = false } = {}) {
+    if (useInventoryPreview()) {
+      sessionCache = previewSession();
+      return sessionCache;
+    }
     if (sessionCache && !force) return sessionCache;
     if (sessionPromise && !force) return sessionPromise;
     sessionPromise = apiJson("/api/session")
@@ -912,6 +961,119 @@
     return `style="background-image:url('${escapeHtml(path)}')"`;
   }
 
+  function inventoryOwnedDate(value) {
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return "Recently";
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function inventoryPublicDescription(item) {
+    if (item?.slug === "rem_bag_skin") {
+      return "Unsecured Soul Container-inspired item connected to this Steam account.";
+    }
+    if (item?.slug === "rem_plushie") {
+      return "Ready-to-ship Merchlock plushie designed by DIECHANCE.";
+    }
+    return item?.description || "Merchlock inventory item.";
+  }
+
+  function inventoryDetailMarkup(item) {
+    if (!item) {
+      return `
+        <div class="merch-inv-detail-empty">
+          <b>No item selected.</b>
+          <span>Choose an item from the grid.</span>
+        </div>
+      `;
+    }
+    return `
+      <div class="merch-inv-detail-art" ${inventoryItemImage(item)}></div>
+      <div class="merch-inv-detail-body">
+        <div class="merch-inv-detail-kicker">MERCHLOCK ITEM</div>
+        <h2>${escapeHtml(item.title || "Inventory item")}</h2>
+        <p>${escapeHtml(inventoryPublicDescription(item))}</p>
+        <div class="merch-inv-props">
+          <div>
+            <span>Acquired</span>
+            <b>${escapeHtml(inventoryOwnedDate(item.acquiredAt))}</b>
+          </div>
+          <div>
+            <span>Collection</span>
+            <b>Merchlock</b>
+          </div>
+          <div>
+            <span>Account</span>
+            <b>Steam linked</b>
+          </div>
+        </div>
+        <div class="merch-inv-actions">
+          <a class="merch-inv-action primary" href="redeem.html">Redeem code</a>
+          <a class="merch-inv-action" href="index.html#first-drop">Shop drop</a>
+        </div>
+      </div>
+    `;
+  }
+
+  function inventoryGridSlots(items) {
+    const slotCount = Math.max(24, Math.ceil((items.length || 1) / 6) * 6);
+    return Array.from({ length: slotCount }, (_, index) => {
+      const item = items[index];
+      if (!item) return `<span class="merch-inv-slot" aria-hidden="true"></span>`;
+      return `
+        <button class="merch-inv-item${index === 0 ? " selected" : ""}" type="button" data-inventory-select="${index}" aria-pressed="${index === 0 ? "true" : "false"}">
+          <span class="merch-inv-item-art" ${inventoryItemImage(item)}></span>
+          <span class="merch-inv-item-name">${escapeHtml(item.title || "Inventory item")}</span>
+          <span class="merch-inv-item-type">Item</span>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function wireInventorySelection(host, items) {
+    const detail = host.querySelector("[data-inventory-detail]");
+    const selectItem = button => {
+      const index = Number(button.getAttribute("data-inventory-select"));
+      const item = items[index];
+      if (!item || !detail) return;
+      host.querySelectorAll("[data-inventory-select]").forEach(other => {
+        other.classList.toggle("selected", other === button);
+        other.setAttribute("aria-pressed", other === button ? "true" : "false");
+      });
+      detail.innerHTML = inventoryDetailMarkup(item);
+    };
+    host.querySelectorAll("[data-inventory-select]").forEach(button => {
+      button.addEventListener("click", () => selectItem(button));
+    });
+
+    const search = host.querySelector("[data-inventory-search]");
+    search?.addEventListener("input", () => {
+      const term = search.value.trim().toLowerCase();
+      let firstVisible = null;
+      host.querySelectorAll("[data-inventory-select]").forEach(button => {
+        const item = items[Number(button.getAttribute("data-inventory-select"))];
+        const text = `${item?.title || ""} ${inventoryPublicDescription(item)}`.toLowerCase();
+        const visible = !term || text.includes(term);
+        button.hidden = !visible;
+        if (visible && !firstVisible) firstVisible = button;
+      });
+      host.querySelectorAll(".merch-inv-slot").forEach(slot => {
+        slot.hidden = Boolean(term);
+      });
+      const selected = host.querySelector("[data-inventory-select].selected:not([hidden])");
+      if (selected) return;
+      if (firstVisible) {
+        selectItem(firstVisible);
+      } else if (detail) {
+        detail.innerHTML = `
+          <div class="merch-inv-detail-empty">
+            <b>No matches.</b>
+            <span>Clear search to see every item.</span>
+          </div>
+        `;
+      }
+    });
+  }
+
   async function renderInventoryPage() {
     const host = document.querySelector("[data-inventory]");
     if (!host) return;
@@ -925,7 +1087,7 @@
         <section class="inventory-state">
           <div class="redeem-kicker">STEAM REQUIRED</div>
           <h1>Your Merchlock inventory.</h1>
-          <p>Sign in with Steam to connect future plush purchases and redeem rewards to your Merchlock account.</p>
+          <p>Sign in with Steam to connect Merchlock items to your account.</p>
           <a class="jp rust jp-btn" href="${escapeHtml(steamLoginHref("/inventory.html"))}">
             <span class="pb"></span>
             <span class="pt">SIGN IN WITH STEAM</span>
@@ -936,45 +1098,58 @@
     }
 
     try {
-      const payload = await apiJson("/api/inventory");
+      const payload = useInventoryPreview() ? previewInventory() : await apiJson("/api/inventory");
       const items = Array.isArray(payload.items) ? payload.items : [];
       host.innerHTML = `
-        <section class="inventory-account">
-          ${accountAvatar(payload.user)}
-          <div>
-            <div class="inventory-label">Connected Steam account</div>
-            <h1>${escapeHtml(payload.user?.personaName || "Steam user")}</h1>
-            <p>${escapeHtml(payload.user?.steamId || "")}</p>
-          </div>
-        </section>
-        <section class="inventory-panel">
-          <div class="admin-panel-head">
-            <div>
-              <h2>Your items</h2>
-              <p>Merchlock-owned inventory tied to your SteamID for future rewards and site features.</p>
+        <section class="merch-inv">
+          <div class="merch-inv-top">
+            <div class="merch-inv-title">
+              <b>Steam-linked Merchlock account</b>
+              <span>Inventory</span>
             </div>
-            <a class="text-link" href="redeem.html">redeem code</a>
+            <div class="merch-inv-user">
+              ${accountAvatar(payload.user)}
+              <span>
+                <b>${escapeHtml(payload.user?.personaName || "Steam user")}</b>
+                <small>${escapeHtml(payload.user?.steamId || "")}</small>
+              </span>
+            </div>
           </div>
-          ${
-            items.length
-              ? `<div class="inventory-grid">${items.map(item => `
-                  <article class="inventory-card">
-                    <div class="inventory-art" ${inventoryItemImage(item)}></div>
-                    <div class="inventory-card-body">
-                      <span class="status-pill ${escapeHtml(item.kind || "virtual")}">${escapeHtml(item.kind || "item")}</span>
-                      <h3>${escapeHtml(item.title || "Inventory item")}</h3>
-                      <p>${escapeHtml(item.description || "Merchlock inventory item.")}</p>
-                      <div class="inventory-meta">Acquired ${escapeHtml(new Date(item.acquiredAt).toLocaleDateString())}</div>
-                    </div>
-                  </article>
-                `).join("")}</div>`
-              : `<div class="inventory-empty">
-                  <b>No items yet.</b>
-                  Buy the Rem plushie while signed in, or redeem the shared Rem reward code to start your inventory.
-                </div>`
-          }
+          <div class="merch-inv-tabs" aria-label="Inventory filters">
+            <button class="active" type="button">All items</button>
+            <span>${escapeHtml(String(items.length))} owned</span>
+          </div>
+          <div class="merch-inv-body">
+            <aside class="merch-inv-rail" aria-label="Inventory collection">
+              <button class="active" type="button">
+                <span>MERCHLOCK</span>
+                <b>${escapeHtml(String(items.length))}</b>
+              </button>
+            </aside>
+            <section class="merch-inv-grid-panel">
+              <div class="merch-inv-toolbar">
+                <div>
+                  <input class="merch-inv-search" data-inventory-search type="search" placeholder="Search inventory" aria-label="Search inventory" />
+                  <b>${escapeHtml(String(items.length))} item${items.length === 1 ? "" : "s"}</b>
+                </div>
+                <a href="redeem.html">Redeem code</a>
+              </div>
+              ${
+                items.length
+                  ? `<div class="merch-inv-grid" role="list">${inventoryGridSlots(items)}</div>`
+                  : `<div class="inventory-empty">
+                      <b>No items yet.</b>
+                      Buy the Rem plushie while signed in, or redeem a Merchlock code to start your inventory.
+                    </div>`
+              }
+            </section>
+            <aside class="merch-inv-detail" data-inventory-detail>
+              ${inventoryDetailMarkup(items[0])}
+            </aside>
+          </div>
         </section>
       `;
+      wireInventorySelection(host, items);
     } catch (error) {
       host.innerHTML = `<div class="redeem-result error">${escapeHtml(formatApiError(error))}</div>`;
     }
@@ -1008,7 +1183,7 @@
           ${accountAvatar(session.user)}
           <span>
             <b>Redeeming as ${escapeHtml(session.user.personaName || "Steam user")}</b>
-            Shared rewards attach to SteamID ${escapeHtml(session.user.steamId || "")}.
+            Code claims attach to SteamID ${escapeHtml(session.user.steamId || "")}.
           </span>
         `;
         form.classList.remove("is-disabled");
@@ -1017,7 +1192,7 @@
           <span class="steam-avatar" aria-hidden="true"></span>
           <span>
             <b>Steam sign-in required.</b>
-            Sign in before redeeming so the reward lands in your Merchlock inventory.
+            Sign in before redeeming.
           </span>
           <a class="inline-steam-link" href="${escapeHtml(steamLoginHref("/redeem.html"))}">Sign in with Steam</a>
         `;
@@ -1026,13 +1201,13 @@
 
     form.addEventListener("submit", async e => {
       e.preventDefault();
-      const user = await requireSteam(result, "Sign in with Steam before redeeming so the mod reward can be added to your Merchlock inventory.");
+      const user = await requireSteam(result, "Sign in with Steam before redeeming.");
       if (!user) return;
       const code = input?.value.trim();
       if (!code) {
         if (result) {
           result.className = "redeem-result error";
-          result.textContent = "Enter the code from your plush insert.";
+          result.textContent = "Enter a code.";
         }
         input?.focus();
         return;
@@ -1053,19 +1228,17 @@
 
         if (result) {
           result.className = "redeem-result success";
-          const inventoryNote = payload.inventoryItem
-            ? `<p><b>${escapeHtml(payload.inventoryItem.title || "Reward")}</b> ${payload.alreadyInInventory || payload.alreadyRedeemed ? "is already in your Merchlock inventory." : "was added to your Merchlock inventory."}</p>`
-            : "";
           result.innerHTML = `
-            <div class="redeem-success-title">${escapeHtml(payload.title || "Download unlocked")}</div>
-            ${inventoryNote}
-            <p>${escapeHtml(payload.description || "Your private fan mod download is ready.")}</p>
-            <a class="jp teal jp-btn redeem-download" href="${escapeHtml(payload.downloadUrl)}" target="_blank" rel="noopener">
-              <span class="pb"></span>
-              <span class="pt">DOWNLOAD MOD</span>
-            </a>
+            <div class="redeem-success-title">Code accepted.</div>
+            <p>${payload.alreadyInInventory || payload.alreadyRedeemed ? "Already claimed on this Steam account." : "Inventory updated."}</p>
+            ${payload.downloadUrl ? `
+              <a class="jp teal jp-btn redeem-download" href="${escapeHtml(payload.downloadUrl)}" target="_blank" rel="noopener">
+                <span class="pb"></span>
+                <span class="pt">DOWNLOAD</span>
+              </a>
+            ` : ""}
             <a class="text-link redeem-inventory-link" href="inventory.html">view inventory</a>
-            <div class="redeem-expiry">Signed link expires in about one hour.</div>
+            ${payload.downloadUrl ? `<div class="redeem-expiry">Link expires in about one hour.</div>` : ""}
           `;
         }
       } catch (error) {
@@ -1128,12 +1301,12 @@
       const codes = Array.isArray(data.codes) ? data.codes : [];
       const inventoryItems = Array.isArray(data.inventoryItems) ? data.inventoryItems : [];
       const claimCounts = data.claimCounts || {};
-      const modNameById = new Map(mods.map(mod => [mod.id, mod.title || mod.slug || "Mod"]));
+      const modNameById = new Map(mods.map(mod => [mod.id, mod.title || mod.slug || "File"]));
 
       document.querySelectorAll("[data-admin-mod-select]").forEach(select => {
         select.innerHTML = mods.length
           ? mods.map(mod => `<option value="${escapeHtml(mod.id)}">${escapeHtml(mod.title || mod.slug)}</option>`).join("")
-          : `<option value="">No mod files yet</option>`;
+          : `<option value="">No files yet</option>`;
       });
 
       document.querySelectorAll("[data-admin-item-select]").forEach(select => {
@@ -1147,6 +1320,7 @@
           ? codes.map(code => {
               const safeCode = `${code.code_prefix || "CODE"}...${code.code_suffix || "----"}`;
               const codeType = code.code_type || "one_time_download";
+              const codeTypeLabel = codeType === "shared_reward_download" ? "shared code" : codeType.replace(/_/g, " ");
               const reward = code.inventory_item_slug || "-";
               const uses = codeType === "shared_reward_download"
                 ? `${claimCounts[code.id] || code.shared_uses || 0} accounts`
@@ -1155,7 +1329,7 @@
                 <tr>
                   <td><button class="text-link mono" type="button" data-copy-value="${escapeHtml(code.batch_id)}">${escapeHtml(String(code.batch_id || "").slice(0, 8))}</button></td>
                   <td><span class="mono">${escapeHtml(safeCode)}</span></td>
-                  <td>${escapeHtml(codeType.replace(/_/g, " "))}</td>
+                  <td>${escapeHtml(codeTypeLabel)}</td>
                   <td><span class="status-pill ${escapeHtml(code.status || "active")}">${escapeHtml(code.status || "active")}</span></td>
                   <td>${escapeHtml(reward)}</td>
                   <td>${escapeHtml(uses)}</td>
@@ -1222,7 +1396,7 @@
           body: data,
         });
         modForm.reset();
-        setFeedback("Mod file registered.", "success");
+        setFeedback("File registered.", "success");
         await loadAdmin();
       } catch (error) {
         setFeedback(formatApiError(error), "error");
@@ -1290,7 +1464,7 @@
             active: data.get("active") === "on",
           }),
         });
-        setFeedback("Shared reward code saved.", "success");
+        setFeedback("Shared code saved.", "success");
         await loadAdmin();
       } catch (error) {
         setFeedback(formatApiError(error), "error");

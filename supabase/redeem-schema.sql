@@ -56,8 +56,8 @@ values
     'rem_bag_skin',
     'Rem Bag Skin',
     'virtual',
-    'Merchlock virtual reward for the Rem bag skin fan mod.',
-    'assets/rem-detail.svg'
+    'Unsecured Soul Container-inspired item connected to this Steam account.',
+    'assets/unsecured-soul-container.svg'
   )
 on conflict (slug) do update set
   title = excluded.title,
