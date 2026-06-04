@@ -39,7 +39,6 @@ const STEAM_OPENID_ENDPOINT = "https://steamcommunity.com/openid/login";
 const SESSION_COOKIE = "ml_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const DEFAULT_SHOPIFY_API_VERSION = "2025-07";
-const DEFAULT_REM_VARIANT_ID = "gid://shopify/ProductVariant/53625624002859";
 const INVENTORY_ITEMS = {
   remPlushie: "rem_plushie",
   remBagSkin: "rem_bag_skin",
@@ -80,7 +79,7 @@ function getConfig(env: unknown, request?: Request): AppConfig {
     shopifyStorePermanentDomain: readEnv(env, "SHOPIFY_STORE_PERMANENT_DOMAIN") || "",
     shopifyStorefrontToken: readEnv(env, "SHOPIFY_STOREFRONT_TOKEN") || "",
     shopifyApiVersion: readEnv(env, "SHOPIFY_API_VERSION") || DEFAULT_SHOPIFY_API_VERSION,
-    remVariantId: readEnv(env, "SHOPIFY_REM_VARIANT_ID") || DEFAULT_REM_VARIANT_ID,
+    remVariantId: (readEnv(env, "SHOPIFY_REM_VARIANT_ID") || "").trim(),
   };
 }
 
@@ -653,7 +652,7 @@ function normalizeCheckoutCart(rawCart: unknown) {
   const rem = cart.find((item) => String(item?.sku || "").toUpperCase() === "REM");
   if (!rem) return [];
   const quantity = Math.min(99, Math.max(1, Math.floor(Number(rem?.qty) || 1)));
-  return [{ merchandiseId: DEFAULT_REM_VARIANT_ID, quantity }];
+  return [{ quantity }];
 }
 
 function formatCheckoutUrl(url: string) {
@@ -672,15 +671,15 @@ async function handleCreateCheckout(request: Request, config: AppConfig) {
 
   const shopifyError = requireConfig(
     config,
-    ["shopifyStorePermanentDomain", "shopifyStorefrontToken"],
+    ["shopifyStorePermanentDomain", "shopifyStorefrontToken", "remVariantId"],
     "Shopify checkout",
   );
   if (shopifyError) return shopifyError;
 
   const body = await readJsonBody(request);
   const lines = normalizeCheckoutCart(body.cart).map((line) => ({
-    ...line,
-    merchandiseId: config.remVariantId || line.merchandiseId,
+    merchandiseId: config.remVariantId,
+    quantity: line.quantity,
   }));
   if (!lines.length) return jsonResponse({ ok: false, error: "No purchasable items in cart." }, 400);
 
@@ -797,6 +796,19 @@ async function handleShopifyPaidWebhook(request: Request, config: AppConfig) {
   if (!(await verifyShopifyWebhook(request, config, rawBodyBytes))) {
     return jsonResponse({ ok: false, error: "Webhook signature is invalid." }, 401);
   }
+
+  // Defense in depth: the HMAC already proves authenticity, but rejecting a
+  // mismatched shop domain catches a webhook pointed at the wrong store and
+  // keeps a single endpoint from granting inventory for an unrelated shop.
+  const shopDomain = (request.headers.get("x-shopify-shop-domain") || "").toLowerCase();
+  if (
+    config.shopifyStorePermanentDomain &&
+    shopDomain &&
+    shopDomain !== config.shopifyStorePermanentDomain.toLowerCase()
+  ) {
+    return jsonResponse({ ok: true, status: "ignored_wrong_shop" });
+  }
+
   const rawBody = new TextDecoder().decode(rawBodyBytes);
 
   const webhookId = request.headers.get("x-shopify-webhook-id") || request.headers.get("webhook-id") || "";
@@ -1183,6 +1195,31 @@ async function handleAdminDisableCodes(request: Request, config: AppConfig) {
   return jsonResponse({ ok: true, updated });
 }
 
+function handleAdminShopifyStatus(config: AppConfig): Response {
+  const variantId = config.remVariantId;
+  const remVariantIdValid = /^gid:\/\/shopify\/ProductVariant\/\d+$/.test(variantId);
+  const checkoutReady = Boolean(
+    config.shopifyStorePermanentDomain && config.shopifyStorefrontToken && remVariantIdValid,
+  );
+  const webhookReady = Boolean(
+    config.supabaseUrl && config.serviceRoleKey && config.shopifyWebhookSecret,
+  );
+  return jsonResponse({
+    ok: true,
+    shopify: {
+      storeDomain: config.shopifyStorePermanentDomain || null,
+      apiVersion: config.shopifyApiVersion,
+      remVariantId: variantId || null,
+      remVariantIdValid,
+      storefrontTokenConfigured: Boolean(config.shopifyStorefrontToken),
+      webhookSecretConfigured: Boolean(config.shopifyWebhookSecret),
+      checkoutReady,
+      webhookReady,
+      ordersPaidWebhookPath: "/api/webhooks/shopify/orders-paid",
+    },
+  });
+}
+
 async function handleApiRequest(request: Request, env: unknown): Promise<Response | undefined> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith("/api/")) return undefined;
@@ -1236,6 +1273,9 @@ async function handleApiRequest(request: Request, env: unknown): Promise<Respons
       }
       if (url.pathname === "/api/admin/codes/disable" && request.method === "POST") {
         return await handleAdminDisableCodes(request, config);
+      }
+      if (url.pathname === "/api/admin/shopify/status" && request.method === "GET") {
+        return handleAdminShopifyStatus(config);
       }
     }
 
