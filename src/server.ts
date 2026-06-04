@@ -582,45 +582,53 @@ async function grantInventoryItem(
   sourceRef = "",
   metadata: JsonRecord = {},
 ) {
-  const items = await supabaseJson(
-    config,
-    `/rest/v1/inventory_items?slug=eq.${postgrestValue(itemSlug)}&select=*&limit=1`,
-  );
-  const item = items?.[0];
-  if (!item?.id) throw new Error(`Inventory item not found: ${itemSlug}`);
-
-  const existing = await supabaseJson(
-    config,
-    `/rest/v1/user_inventory?steam_user_id=eq.${postgrestValue(steamUserId)}&item_id=eq.${postgrestValue(item.id)}&select=*&limit=1`,
-  );
-  const alreadyOwned = Boolean(existing?.[0]);
-
-  if (!alreadyOwned) {
-    await supabaseJson(config, "/rest/v1/user_inventory", {
-      method: "POST",
-      body: JSON.stringify({
-        steam_user_id: steamUserId,
-        item_id: item.id,
-        source_type: sourceType,
-        source_ref: sourceRef,
-        metadata,
-      }),
-    });
+  const rows = await supabaseJson(config, "/rest/v1/rpc/grant_inventory_item", {
+    method: "POST",
+    body: JSON.stringify({
+      target_steam_user_id: steamUserId,
+      target_item_slug: itemSlug,
+      target_source_type: sourceType,
+      target_source_ref: sourceRef,
+      target_metadata: metadata,
+    }),
+  });
+  const grant = Array.isArray(rows) ? rows[0] : rows;
+  if (!grant?.inventory_id || !grant?.item_id) {
+    throw new Error(`Inventory item not granted: ${itemSlug}`);
   }
 
   await supabaseJson(config, "/rest/v1/inventory_events", {
     method: "POST",
     body: JSON.stringify({
       steam_user_id: steamUserId,
-      item_id: item.id,
-      event_type: alreadyOwned ? "already_owned" : "granted",
+      item_id: grant.item_id,
+      event_type: grant.already_owned ? "already_owned" : "granted",
       source_type: sourceType,
       source_ref: sourceRef,
-      metadata,
+      metadata: {
+        ...metadata,
+        editionNumber: grant.edition_number,
+        publicUid: grant.public_uid,
+      },
     }),
   });
 
-  return { item, alreadyOwned };
+  return {
+    item: {
+      id: grant.item_id,
+      slug: grant.item_slug,
+      title: grant.item_title,
+      kind: grant.item_kind,
+      description: grant.item_description,
+      image_path: grant.item_image_path,
+      edition_number: grant.edition_number,
+      public_uid: grant.public_uid,
+    },
+    inventoryId: grant.inventory_id,
+    editionNumber: grant.edition_number,
+    publicUid: grant.public_uid,
+    alreadyOwned: Boolean(grant.already_owned),
+  };
 }
 
 async function handleInventory(request: Request, config: AppConfig) {
@@ -629,7 +637,7 @@ async function handleInventory(request: Request, config: AppConfig) {
 
   const rows = await supabaseJson(
     config,
-    `/rest/v1/user_inventory?steam_user_id=eq.${postgrestValue(user.id)}&select=id,source_type,source_ref,acquired_at,inventory_items(slug,title,kind,description,image_path)&order=acquired_at.desc`,
+    `/rest/v1/user_inventory?steam_user_id=eq.${postgrestValue(user.id)}&select=id,source_type,source_ref,acquired_at,edition_number,public_uid,inventory_items(slug,title,kind,description,image_path)&order=acquired_at.desc`,
   );
 
   const items = (Array.isArray(rows) ? rows : []).map((row) => ({
@@ -637,6 +645,8 @@ async function handleInventory(request: Request, config: AppConfig) {
     sourceType: row.source_type,
     sourceRef: row.source_ref,
     acquiredAt: row.acquired_at,
+    editionNumber: row.edition_number,
+    publicUid: row.public_uid,
     slug: row.inventory_items?.slug,
     title: row.inventory_items?.title,
     kind: row.inventory_items?.kind,

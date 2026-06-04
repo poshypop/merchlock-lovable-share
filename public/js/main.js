@@ -855,6 +855,8 @@
           description: "Ready-to-ship Merchlock plushie designed by DIECHANCE.",
           imagePath: "assets/rem-product.png",
           sourceType: "shopify_order",
+          editionNumber: 1,
+          publicUid: "REM-PLUSHIE-000001",
           acquiredAt: new Date().toISOString(),
         },
         {
@@ -864,6 +866,8 @@
           description: "Unsecured Soul Container-inspired item connected to this Steam account.",
           imagePath: "assets/unsecured-soul-container.svg",
           sourceType: "shared_redeem_code",
+          editionNumber: 42,
+          publicUid: "REM-BAG-000042",
           acquiredAt: new Date().toISOString(),
         },
       ],
@@ -967,6 +971,38 @@
     return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   }
 
+  function inventoryEditionNumber(item) {
+    const number = Number(item?.editionNumber);
+    if (!Number.isFinite(number) || number <= 0) return null;
+    return Math.floor(number);
+  }
+
+  function formatInventoryNumber(number, digits = 4) {
+    if (!number) return "";
+    return String(number).padStart(digits, "0");
+  }
+
+  function inventoryUidPrefix(item) {
+    if (item?.slug === "rem_plushie") return "REM-PLUSHIE";
+    if (item?.slug === "rem_bag_skin") return "REM-BAG";
+    return String(item?.slug || "MERCHLOCK-ITEM")
+      .replace(/[^a-zA-Z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .toUpperCase();
+  }
+
+  function inventoryPublicUid(item) {
+    if (item?.publicUid) return String(item.publicUid);
+    const number = inventoryEditionNumber(item);
+    return number ? `${inventoryUidPrefix(item)}-${formatInventoryNumber(number, 6)}` : "Pending";
+  }
+
+  function inventoryDisplayTitle(item) {
+    const title = item?.title || "Inventory item";
+    const number = inventoryEditionNumber(item);
+    return number ? `${title} #${formatInventoryNumber(number)}` : title;
+  }
+
   function inventoryPublicDescription(item) {
     if (item?.slug === "rem_bag_skin") {
       return "Unsecured Soul Container-inspired item connected to this Steam account.";
@@ -990,25 +1026,21 @@
       <div class="merch-inv-detail-art" ${inventoryItemImage(item)}></div>
       <div class="merch-inv-detail-body">
         <div class="merch-inv-detail-kicker">MERCHLOCK ITEM</div>
-        <h2>${escapeHtml(item.title || "Inventory item")}</h2>
+        <h2>${escapeHtml(inventoryDisplayTitle(item))}</h2>
         <p>${escapeHtml(inventoryPublicDescription(item))}</p>
         <div class="merch-inv-props">
+          <div>
+            <span>Edition</span>
+            <b>#${escapeHtml(formatInventoryNumber(inventoryEditionNumber(item)) || "Pending")}</b>
+          </div>
+          <div>
+            <span>UID</span>
+            <b>${escapeHtml(inventoryPublicUid(item))}</b>
+          </div>
           <div>
             <span>Acquired</span>
             <b>${escapeHtml(inventoryOwnedDate(item.acquiredAt))}</b>
           </div>
-          <div>
-            <span>Collection</span>
-            <b>Merchlock</b>
-          </div>
-          <div>
-            <span>Account</span>
-            <b>Steam linked</b>
-          </div>
-        </div>
-        <div class="merch-inv-actions">
-          <a class="merch-inv-action primary" href="redeem.html">Redeem code</a>
-          <a class="merch-inv-action" href="index.html#first-drop">Shop drop</a>
         </div>
       </div>
     `;
@@ -1022,7 +1054,7 @@
       return `
         <button class="merch-inv-item${index === 0 ? " selected" : ""}" type="button" data-inventory-select="${index}" aria-pressed="${index === 0 ? "true" : "false"}">
           <span class="merch-inv-item-art" ${inventoryItemImage(item)}></span>
-          <span class="merch-inv-item-name">${escapeHtml(item.title || "Inventory item")}</span>
+          <span class="merch-inv-item-name">${escapeHtml(inventoryDisplayTitle(item))}</span>
           <span class="merch-inv-item-type">Item</span>
         </button>
       `;
@@ -1051,7 +1083,7 @@
       let firstVisible = null;
       host.querySelectorAll("[data-inventory-select]").forEach(button => {
         const item = items[Number(button.getAttribute("data-inventory-select"))];
-        const text = `${item?.title || ""} ${inventoryPublicDescription(item)}`.toLowerCase();
+        const text = `${inventoryDisplayTitle(item)} ${inventoryPublicUid(item)} ${inventoryPublicDescription(item)}`.toLowerCase();
         const visible = !term || text.includes(term);
         button.hidden = !visible;
         if (visible && !firstVisible) firstVisible = button;
@@ -1115,24 +1147,13 @@
               </span>
             </div>
           </div>
-          <div class="merch-inv-tabs" aria-label="Inventory filters">
-            <button class="active" type="button">All items</button>
-            <span>${escapeHtml(String(items.length))} owned</span>
-          </div>
           <div class="merch-inv-body">
-            <aside class="merch-inv-rail" aria-label="Inventory collection">
-              <button class="active" type="button">
-                <span>MERCHLOCK</span>
-                <b>${escapeHtml(String(items.length))}</b>
-              </button>
-            </aside>
             <section class="merch-inv-grid-panel">
               <div class="merch-inv-toolbar">
                 <div>
                   <input class="merch-inv-search" data-inventory-search type="search" placeholder="Search inventory" aria-label="Search inventory" />
                   <b>${escapeHtml(String(items.length))} item${items.length === 1 ? "" : "s"}</b>
                 </div>
-                <a href="redeem.html">Redeem code</a>
               </div>
               ${
                 items.length

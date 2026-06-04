@@ -73,9 +73,71 @@ create table if not exists public.user_inventory (
   source_type text not null,
   source_ref text not null default '',
   metadata jsonb not null default '{}'::jsonb,
+  edition_number integer,
+  public_uid text,
   acquired_at timestamptz not null default now(),
   unique (steam_user_id, item_id)
 );
+
+alter table public.user_inventory add column if not exists edition_number integer;
+alter table public.user_inventory add column if not exists public_uid text;
+
+create table if not exists public.inventory_item_counters (
+  item_id uuid primary key references public.inventory_items(id) on delete cascade,
+  last_edition_number integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+create or replace function public.inventory_uid_prefix(item_slug text)
+returns text
+language sql
+immutable
+as $$
+  select case item_slug
+    when 'rem_plushie' then 'REM-PLUSHIE'
+    when 'rem_bag_skin' then 'REM-BAG'
+    else coalesce(
+      nullif(upper(trim(both '-' from regexp_replace(coalesce(item_slug, ''), '[^a-zA-Z0-9]+', '-', 'g'))), ''),
+      'MERCHLOCK-ITEM'
+    )
+  end
+$$;
+
+with existing_max as (
+  select item_id, max(edition_number) as max_edition
+  from public.user_inventory
+  group by item_id
+),
+numbered as (
+  select
+    ui.id,
+    ui.item_id,
+    row_number() over (partition by ui.item_id order by ui.acquired_at, ui.id)
+      + coalesce(em.max_edition, 0) as next_edition
+  from public.user_inventory ui
+  left join existing_max em on em.item_id = ui.item_id
+  where ui.edition_number is null
+)
+update public.user_inventory ui
+set edition_number = numbered.next_edition
+from numbered
+where ui.id = numbered.id;
+
+update public.user_inventory ui
+set public_uid = public.inventory_uid_prefix(ii.slug) || '-' || lpad(ui.edition_number::text, 6, '0')
+from public.inventory_items ii
+where ui.item_id = ii.id
+  and ui.edition_number is not null
+  and coalesce(ui.public_uid, '') = '';
+
+insert into public.inventory_item_counters (item_id, last_edition_number)
+select ii.id, coalesce(max(ui.edition_number), 0)
+from public.inventory_items ii
+left join public.user_inventory ui on ui.item_id = ii.id
+group by ii.id
+on conflict (item_id) do update set
+  last_edition_number = greatest(public.inventory_item_counters.last_edition_number, excluded.last_edition_number),
+  updated_at = now();
 
 create table if not exists public.inventory_events (
   id bigserial primary key,
@@ -152,6 +214,8 @@ create index if not exists user_sessions_user_idx on public.user_sessions(steam_
 create index if not exists inventory_items_slug_idx on public.inventory_items(slug);
 create index if not exists user_inventory_user_idx on public.user_inventory(steam_user_id);
 create index if not exists user_inventory_item_idx on public.user_inventory(item_id);
+create unique index if not exists user_inventory_item_edition_idx on public.user_inventory(item_id, edition_number) where edition_number is not null;
+create unique index if not exists user_inventory_public_uid_idx on public.user_inventory(public_uid) where public_uid is not null;
 create index if not exists inventory_events_user_idx on public.inventory_events(steam_user_id);
 create index if not exists shopify_order_events_webhook_idx on public.shopify_order_events(webhook_id);
 create index if not exists shopify_order_events_order_idx on public.shopify_order_events(order_id);
@@ -162,10 +226,147 @@ create index if not exists redeem_codes_type_idx on public.redeem_codes(code_typ
 create index if not exists redeem_claims_code_idx on public.redeem_code_claims(code_id);
 create index if not exists redeem_claims_user_idx on public.redeem_code_claims(steam_user_id);
 
+create or replace function public.grant_inventory_item(
+  target_steam_user_id uuid,
+  target_item_slug text,
+  target_source_type text,
+  target_source_ref text default '',
+  target_metadata jsonb default '{}'::jsonb
+)
+returns table (
+  inventory_id uuid,
+  item_id uuid,
+  item_slug text,
+  item_title text,
+  item_kind text,
+  item_description text,
+  item_image_path text,
+  edition_number integer,
+  public_uid text,
+  already_owned boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  found_item public.inventory_items%rowtype;
+  owned_inventory public.user_inventory%rowtype;
+  next_edition integer;
+  next_uid text;
+begin
+  select *
+  into found_item
+  from public.inventory_items
+  where slug = target_item_slug
+    and active = true
+  limit 1;
+
+  if not found then
+    raise exception 'Inventory item not found: %', target_item_slug;
+  end if;
+
+  select *
+  into owned_inventory
+  from public.user_inventory
+  where steam_user_id = target_steam_user_id
+    and item_id = found_item.id
+  limit 1;
+
+  if found then
+    if owned_inventory.edition_number is null then
+      insert into public.inventory_item_counters (item_id, last_edition_number)
+      values (
+        found_item.id,
+        coalesce((select max(edition_number) from public.user_inventory where item_id = found_item.id), 0)
+      )
+      on conflict (item_id) do nothing;
+
+      update public.inventory_item_counters
+      set last_edition_number = last_edition_number + 1,
+          updated_at = now()
+      where item_id = found_item.id
+      returning last_edition_number into next_edition;
+    else
+      next_edition := owned_inventory.edition_number;
+    end if;
+
+    next_uid := public.inventory_uid_prefix(found_item.slug) || '-' || lpad(next_edition::text, 6, '0');
+
+    update public.user_inventory
+    set edition_number = next_edition,
+        public_uid = coalesce(nullif(public_uid, ''), next_uid)
+    where id = owned_inventory.id
+    returning * into owned_inventory;
+
+    return query select
+      owned_inventory.id,
+      found_item.id,
+      found_item.slug,
+      found_item.title,
+      found_item.kind,
+      found_item.description,
+      found_item.image_path,
+      owned_inventory.edition_number,
+      owned_inventory.public_uid,
+      true;
+    return;
+  end if;
+
+  insert into public.inventory_item_counters (item_id, last_edition_number)
+  values (
+    found_item.id,
+    coalesce((select max(edition_number) from public.user_inventory where item_id = found_item.id), 0)
+  )
+  on conflict (item_id) do nothing;
+
+  update public.inventory_item_counters
+  set last_edition_number = last_edition_number + 1,
+      updated_at = now()
+  where item_id = found_item.id
+  returning last_edition_number into next_edition;
+
+  next_uid := public.inventory_uid_prefix(found_item.slug) || '-' || lpad(next_edition::text, 6, '0');
+
+  insert into public.user_inventory (
+    steam_user_id,
+    item_id,
+    source_type,
+    source_ref,
+    metadata,
+    edition_number,
+    public_uid
+  )
+  values (
+    target_steam_user_id,
+    found_item.id,
+    target_source_type,
+    coalesce(target_source_ref, ''),
+    coalesce(target_metadata, '{}'::jsonb),
+    next_edition,
+    next_uid
+  )
+  returning * into owned_inventory;
+
+  return query select
+    owned_inventory.id,
+    found_item.id,
+    found_item.slug,
+    found_item.title,
+    found_item.kind,
+    found_item.description,
+    found_item.image_path,
+    owned_inventory.edition_number,
+    owned_inventory.public_uid,
+    false;
+end;
+$$;
+
 alter table public.mod_files enable row level security;
 alter table public.steam_users enable row level security;
 alter table public.user_sessions enable row level security;
 alter table public.inventory_items enable row level security;
+alter table public.inventory_item_counters enable row level security;
 alter table public.user_inventory enable row level security;
 alter table public.inventory_events enable row level security;
 alter table public.shopify_order_events enable row level security;
