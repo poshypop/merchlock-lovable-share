@@ -718,17 +718,41 @@ async function handleCreateCheckout(request: Request, config: AppConfig) {
     },
   );
 
-  const payload = await response.json();
-  if (!response.ok || payload.errors?.length) {
-    throw new Error(payload.errors?.map((err: JsonRecord) => err.message).join(", ") || "Checkout failed.");
+  const rawBody = await response.text();
+  let payload: JsonRecord = {};
+  try {
+    payload = rawBody ? (JSON.parse(rawBody) as JsonRecord) : {};
+  } catch {
+    payload = {};
   }
 
-  const userErrors = payload?.data?.cartCreate?.userErrors || [];
+  // Surface the real upstream failure instead of a generic message. Storefront
+  // auth failures return a non-2xx with `errors` as a STRING (e.g. "Invalid API
+  // key or access token"); GraphQL errors arrive as an array of { message }.
+  const rawErrors = (payload as { errors?: unknown }).errors;
+  const shopifyErrorText = Array.isArray(rawErrors)
+    ? rawErrors.map((err) => (err as JsonRecord)?.message).filter(Boolean).join(", ")
+    : typeof rawErrors === "string"
+      ? rawErrors
+      : "";
+
+  if (!response.ok) {
+    const detail = shopifyErrorText || rawBody.slice(0, 300) || response.statusText;
+    return jsonResponse({ ok: false, error: `Shopify rejected checkout (HTTP ${response.status}): ${detail}` }, 502);
+  }
+  if (shopifyErrorText) {
+    return jsonResponse({ ok: false, error: `Shopify checkout error: ${shopifyErrorText}` }, 502);
+  }
+
+  const cartCreate = (payload as {
+    data?: { cartCreate?: { cart?: { checkoutUrl?: string }; userErrors?: JsonRecord[] } };
+  }).data?.cartCreate;
+  const userErrors = cartCreate?.userErrors || [];
   if (userErrors.length) {
-    return jsonResponse({ ok: false, error: userErrors.map((err: JsonRecord) => err.message).join(", ") }, 400);
+    return jsonResponse({ ok: false, error: userErrors.map((err) => (err as JsonRecord).message).join(", ") }, 400);
   }
 
-  const checkoutUrl = payload?.data?.cartCreate?.cart?.checkoutUrl;
+  const checkoutUrl = cartCreate?.cart?.checkoutUrl;
   if (!checkoutUrl) return jsonResponse({ ok: false, error: "Checkout service did not return a checkout URL." }, 502);
   return jsonResponse({ ok: true, checkoutUrl: formatCheckoutUrl(checkoutUrl) });
 }
