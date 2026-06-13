@@ -676,15 +676,18 @@ function formatCheckoutUrl(url: string) {
 }
 
 async function handleCreateCheckout(request: Request, config: AppConfig) {
-  const sessionUser = await requireSessionUser(request, config);
-  if (sessionUser instanceof Response) return sessionUser;
-
   const shopifyError = requireConfig(
     config,
     ["shopifyStorePermanentDomain", "shopifyStorefrontToken", "remVariantId"],
-    "Shopify checkout",
+    "Checkout",
   );
   if (shopifyError) return shopifyError;
+
+  // Steam sign-in is optional at checkout. Signed-in buyers get the digital
+  // grant via the orders/paid webhook; guest orders are recorded "unlinked"
+  // with no grant. If the session backend isn't configured, treat as guest.
+  const sessionError = requireConfig(config, ["supabaseUrl", "serviceRoleKey", "sessionSecret"], "Steam session");
+  const sessionUser = sessionError ? null : await getSessionUser(request, config);
 
   const body = await readJsonBody(request);
   const lines = normalizeCheckoutCart(body.cart).map((line) => ({
@@ -712,11 +715,13 @@ async function handleCreateCheckout(request: Request, config: AppConfig) {
         variables: {
           input: {
             lines,
-            attributes: [
-              { key: "merchlock_steam_id", value: sessionUser.steamId },
-              { key: "merchlock_user_id", value: sessionUser.id },
-              { key: "merchlock_source", value: "merchlock" },
-            ],
+            attributes: sessionUser
+              ? [
+                  { key: "merchlock_steam_id", value: sessionUser.steamId },
+                  { key: "merchlock_user_id", value: sessionUser.id },
+                  { key: "merchlock_source", value: "merchlock" },
+                ]
+              : [{ key: "merchlock_source", value: "merchlock" }],
           },
         },
       }),
@@ -725,7 +730,7 @@ async function handleCreateCheckout(request: Request, config: AppConfig) {
 
   const payload = await response.json();
   if (!response.ok || payload.errors?.length) {
-    throw new Error(payload.errors?.map((err: JsonRecord) => err.message).join(", ") || "Shopify checkout failed.");
+    throw new Error(payload.errors?.map((err: JsonRecord) => err.message).join(", ") || "Checkout failed.");
   }
 
   const userErrors = payload?.data?.cartCreate?.userErrors || [];
@@ -734,7 +739,7 @@ async function handleCreateCheckout(request: Request, config: AppConfig) {
   }
 
   const checkoutUrl = payload?.data?.cartCreate?.cart?.checkoutUrl;
-  if (!checkoutUrl) return jsonResponse({ ok: false, error: "Shopify did not return a checkout URL." }, 502);
+  if (!checkoutUrl) return jsonResponse({ ok: false, error: "Checkout service did not return a checkout URL." }, 502);
   return jsonResponse({ ok: true, checkoutUrl: formatCheckoutUrl(checkoutUrl) });
 }
 

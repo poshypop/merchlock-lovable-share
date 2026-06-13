@@ -6,8 +6,10 @@ source of truth for paid orders. There are exactly two integration points:
 1. **Checkout** — the cart on the MerchLock site calls
    `POST /api/checkout/create`, which uses the Shopify **Storefront API**
    (`cartCreate`) to build a cart and returns Shopify's hosted `checkoutUrl`.
-   The buyer completes payment on Shopify. The cart is tagged with the
-   shopper's Steam identity (`merchlock_steam_id`, `merchlock_user_id`).
+   The buyer completes payment on Shopify. When the shopper is signed in
+   with Steam, the cart is tagged with their Steam identity
+   (`merchlock_steam_id`, `merchlock_user_id`); guests check out without
+   Steam attributes.
 2. **Fulfillment** — when the order is paid, Shopify calls the
    `orders/paid` webhook at `POST /api/webhooks/shopify/orders-paid`. The
    server verifies the HMAC signature, reads the Steam id back off the
@@ -134,10 +136,10 @@ curl -s https://YOUR-SITE/api/admin/shopify/status \
 
 You want `checkoutReady: true` and `webhookReady: true`.
 
-**Checkout check:** on the MerchLock site, sign in with Steam, add the Rem
-plushie, and click **Checkout with Shopify**. A real Shopify checkout URL
-should open. If you get *"Shopify checkout backend is not configured"*, the
-named env var is missing.
+**Checkout check:** on the MerchLock site, add the Rem plushie and click
+**SECURE CHECKOUT** (signed in, or via "Continue as guest"). A real Shopify
+checkout URL should open. If you get *"Checkout backend is not configured"*,
+the named env var is missing.
 
 **Webhook check:** on the Notifications page use **Send test notification**.
 The sample order has no Steam id, so it is recorded in `shopify_order_events`
@@ -148,14 +150,50 @@ endpoint + HMAC are correct. A real signed‑in purchase records `granted`.
 
 ## How the Steam ↔ order link works
 
-The shopper **must be signed in with Steam before checkout** (the cart/checkout
-UI enforces this). `cartCreate` attaches `merchlock_steam_id` as a cart
+Steam sign-in is **optional** at checkout: the cart/checkout UI offers
+"Sign in with Steam" (to receive the digital item) or "Continue as guest".
+For signed-in shoppers, `cartCreate` attaches `merchlock_steam_id` as a cart
 attribute, which Shopify carries onto the paid order as a `note_attribute`.
 The webhook reads it back and grants the plushie.
 
-If someone reaches Shopify checkout without a linked Steam session, the order
-is still recorded (`status: "unlinked"`) but no inventory is granted; you can
-reconcile those manually from `shopify_order_events`.
+Guest orders carry only `merchlock_source` — they land in
+`shopify_order_events` with `status: "unlinked"` and `steam_id: null`, and
+no inventory is granted, **by design**. You can reconcile one manually from
+`shopify_order_events` if a guest buyer later asks for the digital item.
+
+---
+
+## White-label: hide Shopify from buyers
+
+The site's own copy is Shopify-free (buttons say **SECURE CHECKOUT**). The
+payment page itself is Shopify-hosted, but you can make it carry your brand
+and your domain so buyers never see "myshopify.com":
+
+1. **Custom checkout domain** (the big one). In Shopify admin:
+   **Settings → Domains → Connect existing domain** → enter a subdomain of
+   your site, e.g. `shop.your-domain.com`. At your DNS host add a CNAME:
+   `shop` → `shops.myshopify.com`. Verify in Shopify, wait for the TLS cert,
+   then click **Set as primary**. From that moment `cartCreate` returns
+   checkout URLs on `shop.your-domain.com` — no code changes needed (the
+   server passes Shopify's `checkoutUrl` straight through).
+2. **Keep the env var on the permanent domain.**
+   `SHOPIFY_STORE_PERMANENT_DOMAIN` must STAY `<store>.myshopify.com` even
+   after the custom domain is primary — the Storefront API endpoint and the
+   webhook's `x-shopify-shop-domain` check both use the permanent domain.
+3. **Checkout appearance.** **Settings → Checkout → Customize** opens the
+   checkout editor: upload the MerchLock logo, set background/button colors to
+   the site palette, pick a matching font. **Settings → Brand** holds the
+   shared brand assets Shopify reuses across checkout and emails.
+4. **Order emails.** **Settings → Notifications**: customize the Order
+   confirmation / Shipping confirmation templates with your logo, and set the
+   **sender email** to an address on your domain (complete the SPF/DKIM
+   domain-verification steps Shopify shows so mail doesn't say "via
+   shopifyemail.com").
+5. **Reduce remaining tells (optional).** Shop Pay is the most visibly
+   Shopify-branded element at payment; you can turn it off under
+   **Settings → Payments → Shopify Payments → Manage**. Honest limit: the
+   hosted checkout's fine print and card statements may still reference
+   Shopify; a fully custom checkout requires Shopify Plus.
 
 ---
 
@@ -169,7 +207,7 @@ Inspect the `shopify_order_events` table — every webhook call is logged with a
 | `401 Webhook signature is invalid` | `SHOPIFY_WEBHOOK_SECRET` ≠ Shopify's signing secret, or a proxy altered the raw body | Copy the exact secret (Step 3); ensure nothing rewrites the request body before this server |
 | Checkout error: *backend is not configured* | A required env var is unset | Set the var named in the `missing` list |
 | Checkout opens but Shopify shows a line‑item / `userErrors` error | `SHOPIFY_REM_VARIANT_ID` isn't a real variant in this store, or the product isn't on the Online Store channel | Fix the GID (Step 1); publish the product |
-| `status: "unlinked"` | Buyer wasn't signed into Steam at checkout | Expected for test notifications; for real orders ensure Steam sign‑in is required |
+| `status: "unlinked"` | Buyer checked out as a guest (or a test notification) | Expected for guest checkouts and test notifications; reconcile manually if the buyer wanted the digital item |
 | `status: "ignored_non_rem"` | Order line items didn't match the Rem variant/SKU/title | Confirm the purchased variant matches `SHOPIFY_REM_VARIANT_ID` |
 | `status: "ignored_wrong_shop"` | `x-shopify-shop-domain` ≠ `SHOPIFY_STORE_PERMANENT_DOMAIN` | Point the webhook at the correct store / fix the domain env |
 | `503` from the webhook | Supabase or webhook secret not configured | Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SHOPIFY_WEBHOOK_SECRET` |
@@ -180,6 +218,6 @@ Inspect the `shopify_order_events` table — every webhook call is logged with a
 
 | Method & path | Purpose | Auth |
 | --- | --- | --- |
-| `POST /api/checkout/create` | Create a Shopify cart, return `checkoutUrl` | Steam session cookie |
+| `POST /api/checkout/create` | Create a Shopify cart, return `checkoutUrl` | Optional Steam session cookie (guests allowed) |
 | `POST /api/webhooks/shopify/orders-paid` | Grant inventory on paid order | Shopify HMAC |
 | `GET /api/admin/shopify/status` | Report Shopify config readiness (no secrets) | `REDEEM_ADMIN_TOKEN` |
