@@ -232,7 +232,7 @@
       return `
         <div class="${cls.join(" ")}" data-hero-id="${h.id}">
           <span class="hero-rank">${String(rank).padStart(2, "0")}</span>
-          <div class="hero-portrait"><img src="assets/heroes/${h.id}.png" alt="${h.name}" /></div>
+          <div class="hero-portrait"><img src="/assets/heroes/${h.id}.png" alt="${h.name}" /></div>
           <div class="hero-name">${h.name}</div>
           <div class="hero-role">${h.role}</div>
           <div class="hero-meter"><div class="hero-meter-fill" style="width:${pct}%"></div></div>
@@ -525,7 +525,7 @@
         <div class="cart-empty">
           <div class="pulp">YOUR CART IS EMPTY</div>
           <p>Nothing in here yet. Pick up a Rem plushie or check the next vote.</p>
-          <a class="jp rust jp-btn" href="index.html#first-drop" style="font-size:13px;">
+          <a class="jp rust jp-btn" href="/index.html#first-drop" style="font-size:13px;">
             <span class="pb"></span><span class="pt">SHOP</span>
           </a>
         </div>
@@ -539,7 +539,7 @@
         <div class="thumb-img" aria-hidden="true"></div>
         <div>
           <div class="name">${it.name}</div>
-          <div class="by">by <a href="index.html#artist">${it.artist}</a></div>
+          <div class="by">by <a href="/index.html#artist">${it.artist}</a></div>
           <div class="sku">SKU-${it.sku} · ships ${it.ships}</div>
           <div class="actions">
             <span class="qty" data-line-qty="${i}">
@@ -566,7 +566,7 @@
         <div class="grand"><span class="label">Total</span><span class="val">${formatMoney(totals.total)}</span></div>
         <div class="royalty-mini">
           <div class="lab">◈ ARTIST ROYALTY</div>
-          <p>Estimated at 30% of net sales revenue for <a href="index.html#artist">${artist}</a>. Final royalties exclude tax, shipping, processing fees, refunds/returns, and customs duties.</p>
+          <p>Estimated at 30% of net sales revenue for <a href="/index.html#artist">${artist}</a>. Final royalties exclude tax, shipping, processing fees, refunds/returns, and customs duties.</p>
         </div>
         <div class="checkout-btn">
           <button type="button" class="jp rust jp-btn" data-shopify-checkout style="font-size:14px;width:100%;display:block;text-align:center;border:0;cursor:pointer;">
@@ -619,7 +619,7 @@
         <div class="co-summary">
           <div class="head">YOUR ORDER</div>
           <p style="color:var(--dim);font-size:13px;margin:0 0 16px;">Cart is empty. Head back to add the Rem plushie.</p>
-          <a class="jp rust jp-btn" href="index.html#first-drop" style="font-size:13px;">
+          <a class="jp rust jp-btn" href="/index.html#first-drop" style="font-size:13px;">
             <span class="pb"></span><span class="pt">BROWSE</span>
           </a>
         </div>
@@ -638,7 +638,7 @@
             <div class="ti"></div>
             <div class="info">
               <div class="name">${it.name}${it.qty > 1 ? ` × ${it.qty}` : ""}</div>
-              <div class="by">by <a href="index.html#artist">${it.artist}</a></div>
+              <div class="by">by <a href="/index.html#artist">${it.artist}</a></div>
             </div>
             <div class="v">${formatMoney(it.price * it.qty)}</div>
           </div>
@@ -717,15 +717,13 @@
   function wireShopifyCheckoutButton(btn) {
     if (!btn || btn.dataset.bound === "1") return;
     btn.dataset.bound = "1";
-    btn.addEventListener("click", async () => {
+    const openCheckout = async () => {
       const feedback = document.querySelector("[data-shopify-feedback]") || document.querySelector("[data-checkout-feedback]");
       const cart = readCart();
       if (!cart.length) {
         if (feedback) feedback.textContent = "Cart is empty.";
         return;
       }
-      const user = await requireSteam(feedback);
-      if (!user) return;
       const label = btn.querySelector(".pt");
       const original = label ? label.textContent : "";
       if (label) label.textContent = "OPENING…";
@@ -741,6 +739,19 @@
         btn.disabled = false;
         if (label) label.textContent = original;
       }
+    };
+    btn.addEventListener("click", async () => {
+      const feedback = document.querySelector("[data-shopify-feedback]") || document.querySelector("[data-checkout-feedback]");
+      if (!readCart().length) {
+        if (feedback) feedback.textContent = "Cart is empty.";
+        return;
+      }
+      const session = await loadSession();
+      if (session?.user) {
+        await openCheckout();
+        return;
+      }
+      offerGuestCheckout(feedback, openCheckout);
     });
   }
 
@@ -749,14 +760,12 @@
     if (!btn) return;
     const label = btn.querySelector(".pt");
     if (label) label.textContent = "CHECKOUT WITH SHOPIFY";
-    btn.addEventListener("click", async () => {
+    const openCheckout = async () => {
       const feedback = document.querySelector("[data-checkout-feedback]");
       if (!readCart().length) {
         if (feedback) feedback.textContent = "Cart is empty. Add the Rem plushie before checkout.";
         return;
       }
-      const user = await requireSteam(feedback);
-      if (!user) return;
       try {
         btn.disabled = true;
         const url = await createShopifyCheckout(readCart());
@@ -768,6 +777,19 @@
       } finally {
         btn.disabled = false;
       }
+    };
+    btn.addEventListener("click", async () => {
+      const feedback = document.querySelector("[data-checkout-feedback]");
+      if (!readCart().length) {
+        if (feedback) feedback.textContent = "Cart is empty. Add the Rem plushie before checkout.";
+        return;
+      }
+      const session = await loadSession();
+      if (session?.user) {
+        await openCheckout();
+        return;
+      }
+      offerGuestCheckout(feedback, openCheckout);
     });
   }
 
@@ -837,7 +859,7 @@
       user: {
         steamId: "76561198000000000",
         personaName: "POSHYPOP",
-        avatarUrl: "assets/poshypop.png",
+        avatarUrl: "/assets/poshypop.png",
         profileUrl: "https://steamcommunity.com/",
       },
     };
@@ -853,7 +875,7 @@
           title: "Rem Plushie",
           kind: "item",
           description: "Ready-to-ship Merchlock plushie designed by DIECHANCE.",
-          imagePath: "assets/rem-product.png",
+          imagePath: "/assets/rem-product.png",
           sourceType: "shopify_order",
           acquiredAt: new Date().toISOString(),
         },
@@ -862,7 +884,7 @@
           title: "Rem Bag Skin",
           kind: "item",
           description: "Unsecured Soul Container-inspired item connected to this Steam account.",
-          imagePath: "assets/unsecured-soul-container.svg",
+          imagePath: "/assets/unsecured-soul-container.svg",
           sourceType: "shared_redeem_code",
           acquiredAt: new Date().toISOString(),
         },
@@ -902,7 +924,7 @@
       const user = payload?.user;
       if (user) {
         host.innerHTML = `
-          <a class="steam-profile" href="inventory.html" title="View Merchlock inventory">
+          <a class="steam-profile" href="/inventory.html" title="View Merchlock inventory">
             ${accountAvatar(user)}
             <span>
               <b>${escapeHtml(user.personaName || "Steam user")}</b>
@@ -956,8 +978,18 @@
     return null;
   }
 
+  function offerGuestCheckout(feedback, onGuest) {
+    if (!feedback) return;
+    feedback.innerHTML = `
+      Sign in with Steam to get the digital item with your order, or continue as guest (plushie only).
+      <a class="inline-steam-link" href="${escapeHtml(steamLoginHref())}">Sign in with Steam</a>
+      <button type="button" class="guest-checkout-link" data-continue-guest>Continue as guest</button>
+    `;
+    feedback.querySelector("[data-continue-guest]").addEventListener("click", () => onGuest(), { once: true });
+  }
+
   function inventoryItemImage(item) {
-    const path = item?.imagePath || "assets/rem-detail.svg";
+    const path = item?.imagePath || "/assets/rem-detail.svg";
     return `style="background-image:url('${escapeHtml(path)}')"`;
   }
 
@@ -1007,8 +1039,8 @@
           </div>
         </div>
         <div class="merch-inv-actions">
-          <a class="merch-inv-action primary" href="redeem.html">Redeem code</a>
-          <a class="merch-inv-action" href="index.html#first-drop">Shop drop</a>
+          <a class="merch-inv-action primary" href="/redeem.html">Redeem code</a>
+          <a class="merch-inv-action" href="/index.html#first-drop">Shop drop</a>
         </div>
       </div>
     `;
@@ -1132,7 +1164,7 @@
                   <input class="merch-inv-search" data-inventory-search type="search" placeholder="Search inventory" aria-label="Search inventory" />
                   <b>${escapeHtml(String(items.length))} item${items.length === 1 ? "" : "s"}</b>
                 </div>
-                <a href="redeem.html">Redeem code</a>
+                <a href="/redeem.html">Redeem code</a>
               </div>
               ${
                 items.length
@@ -1237,7 +1269,7 @@
                 <span class="pt">DOWNLOAD</span>
               </a>
             ` : ""}
-            <a class="text-link redeem-inventory-link" href="inventory.html">view inventory</a>
+            <a class="text-link redeem-inventory-link" href="/inventory.html">view inventory</a>
             ${payload.downloadUrl ? `<div class="redeem-expiry">Link expires in about one hour.</div>` : ""}
           `;
         }
@@ -1522,33 +1554,44 @@
 
 
   /* ============ Init ============ */
+  // Run each init step in isolation so one failure can't take down every other
+  // feature/animation on the page (and so live issues surface as labeled errors).
+  function safe(fn) {
+    try {
+      fn();
+    } catch (err) {
+      console.error("init step failed:", fn.name || "step", err);
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
-    renderNewsStrip();
-    updateCartCount();
-    renderVoteGrid();
-    renderVoteStatus();
-    if (document.querySelector("[data-vote-countdown]")) {
+    safe(renderNewsStrip);
+    safe(updateCartCount);
+    safe(renderVoteGrid);
+    safe(renderVoteStatus);
+    safe(function voteCountdownTimer() {
+      if (!document.querySelector("[data-vote-countdown]")) return;
       window.setInterval(() => {
         const wasOpen = !document.querySelector(".vote-btn[disabled]");
         renderVoteStatus();
         if (wasOpen !== voteIsOpen()) renderVoteGrid();
       }, 60000);
-    }
-    wireGallery();
-    wireNewsletter();
-    wireEmailModal();
-    wireArtistCall();
-    wireNotifyDrop();
-    wireSteamAuth();
-    wireBuyNow();
-    wireWishlist();
-    wireSmoothScroll();
-    renderCart();
-    renderCheckoutSummary();
-    wireShipOptions();
-    wirePlaceOrder();
-    wireRedeemPage();
-    wireAdminRedeem();
-    renderInventoryPage();
+    });
+    safe(wireGallery);
+    safe(wireNewsletter);
+    safe(wireEmailModal);
+    safe(wireArtistCall);
+    safe(wireNotifyDrop);
+    safe(wireSteamAuth);
+    safe(wireBuyNow);
+    safe(wireWishlist);
+    safe(wireSmoothScroll);
+    safe(renderCart);
+    safe(renderCheckoutSummary);
+    safe(wireShipOptions);
+    safe(wirePlaceOrder);
+    safe(wireRedeemPage);
+    safe(wireAdminRedeem);
+    safe(renderInventoryPage);
   });
 })();

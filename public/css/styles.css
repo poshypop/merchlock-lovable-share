@@ -3231,7 +3231,8 @@ footer {
 }
 
 .inline-steam-link,
-.redeem-inventory-link {
+.redeem-inventory-link,
+.guest-checkout-link {
   color: var(--amber-2);
   text-decoration: underline;
   text-underline-offset: 3px;

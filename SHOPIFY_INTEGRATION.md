@@ -6,8 +6,10 @@ source of truth for paid orders. There are exactly two integration points:
 1. **Checkout** — the cart on the MerchLock site calls
    `POST /api/checkout/create`, which uses the Shopify **Storefront API**
    (`cartCreate`) to build a cart and returns Shopify's hosted `checkoutUrl`.
-   The buyer completes payment on Shopify. The cart is tagged with the
-   shopper's Steam identity (`merchlock_steam_id`, `merchlock_user_id`).
+   The buyer completes payment on Shopify. When the shopper is signed in
+   with Steam, the cart is tagged with their Steam identity
+   (`merchlock_steam_id`, `merchlock_user_id`); guests check out without
+   Steam attributes.
 2. **Fulfillment** — when the order is paid, Shopify calls the
    `orders/paid` webhook at `POST /api/webhooks/shopify/orders-paid`. The
    server verifies the HMAC signature, reads the Steam id back off the
@@ -148,14 +150,16 @@ endpoint + HMAC are correct. A real signed‑in purchase records `granted`.
 
 ## How the Steam ↔ order link works
 
-The shopper **must be signed in with Steam before checkout** (the cart/checkout
-UI enforces this). `cartCreate` attaches `merchlock_steam_id` as a cart
+Steam sign-in is **optional** at checkout: the cart/checkout UI offers
+"Sign in with Steam" (to receive the digital item) or "Continue as guest".
+For signed-in shoppers, `cartCreate` attaches `merchlock_steam_id` as a cart
 attribute, which Shopify carries onto the paid order as a `note_attribute`.
 The webhook reads it back and grants the plushie.
 
-If someone reaches Shopify checkout without a linked Steam session, the order
-is still recorded (`status: "unlinked"`) but no inventory is granted; you can
-reconcile those manually from `shopify_order_events`.
+Guest orders carry only `merchlock_source` — they land in
+`shopify_order_events` with `status: "unlinked"` and `steam_id: null`, and
+no inventory is granted, **by design**. You can reconcile one manually from
+`shopify_order_events` if a guest buyer later asks for the digital item.
 
 ---
 
@@ -169,7 +173,7 @@ Inspect the `shopify_order_events` table — every webhook call is logged with a
 | `401 Webhook signature is invalid` | `SHOPIFY_WEBHOOK_SECRET` ≠ Shopify's signing secret, or a proxy altered the raw body | Copy the exact secret (Step 3); ensure nothing rewrites the request body before this server |
 | Checkout error: *backend is not configured* | A required env var is unset | Set the var named in the `missing` list |
 | Checkout opens but Shopify shows a line‑item / `userErrors` error | `SHOPIFY_REM_VARIANT_ID` isn't a real variant in this store, or the product isn't on the Online Store channel | Fix the GID (Step 1); publish the product |
-| `status: "unlinked"` | Buyer wasn't signed into Steam at checkout | Expected for test notifications; for real orders ensure Steam sign‑in is required |
+| `status: "unlinked"` | Buyer checked out as a guest (or a test notification) | Expected for guest checkouts and test notifications; reconcile manually if the buyer wanted the digital item |
 | `status: "ignored_non_rem"` | Order line items didn't match the Rem variant/SKU/title | Confirm the purchased variant matches `SHOPIFY_REM_VARIANT_ID` |
 | `status: "ignored_wrong_shop"` | `x-shopify-shop-domain` ≠ `SHOPIFY_STORE_PERMANENT_DOMAIN` | Point the webhook at the correct store / fix the domain env |
 | `503` from the webhook | Supabase or webhook secret not configured | Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SHOPIFY_WEBHOOK_SECRET` |
@@ -180,6 +184,6 @@ Inspect the `shopify_order_events` table — every webhook call is logged with a
 
 | Method & path | Purpose | Auth |
 | --- | --- | --- |
-| `POST /api/checkout/create` | Create a Shopify cart, return `checkoutUrl` | Steam session cookie |
+| `POST /api/checkout/create` | Create a Shopify cart, return `checkoutUrl` | Optional Steam session cookie (guests allowed) |
 | `POST /api/webhooks/shopify/orders-paid` | Grant inventory on paid order | Shopify HMAC |
 | `GET /api/admin/shopify/status` | Report Shopify config readiness (no secrets) | `REDEEM_ADMIN_TOKEN` |
