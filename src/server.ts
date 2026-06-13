@@ -669,7 +669,7 @@ async function handleCreateCheckout(request: Request, config: AppConfig) {
   const shopifyError = requireConfig(
     config,
     ["shopifyStorePermanentDomain", "shopifyStorefrontToken", "remVariantId"],
-    "Shopify checkout",
+    "Checkout",
   );
   if (shopifyError) return shopifyError;
 
@@ -720,7 +720,7 @@ async function handleCreateCheckout(request: Request, config: AppConfig) {
 
   const payload = await response.json();
   if (!response.ok || payload.errors?.length) {
-    throw new Error(payload.errors?.map((err: JsonRecord) => err.message).join(", ") || "Shopify checkout failed.");
+    throw new Error(payload.errors?.map((err: JsonRecord) => err.message).join(", ") || "Checkout failed.");
   }
 
   const userErrors = payload?.data?.cartCreate?.userErrors || [];
@@ -729,7 +729,7 @@ async function handleCreateCheckout(request: Request, config: AppConfig) {
   }
 
   const checkoutUrl = payload?.data?.cartCreate?.cart?.checkoutUrl;
-  if (!checkoutUrl) return jsonResponse({ ok: false, error: "Shopify did not return a checkout URL." }, 502);
+  if (!checkoutUrl) return jsonResponse({ ok: false, error: "Checkout service did not return a checkout URL." }, 502);
   return jsonResponse({ ok: true, checkoutUrl: formatCheckoutUrl(checkoutUrl) });
 }
 

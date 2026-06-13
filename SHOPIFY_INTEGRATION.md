@@ -136,10 +136,10 @@ curl -s https://YOUR-SITE/api/admin/shopify/status \
 
 You want `checkoutReady: true` and `webhookReady: true`.
 
-**Checkout check:** on the MerchLock site, sign in with Steam, add the Rem
-plushie, and click **Checkout with Shopify**. A real Shopify checkout URL
-should open. If you get *"Shopify checkout backend is not configured"*, the
-named env var is missing.
+**Checkout check:** on the MerchLock site, add the Rem plushie and click
+**SECURE CHECKOUT** (signed in, or via "Continue as guest"). A real Shopify
+checkout URL should open. If you get *"Checkout backend is not configured"*,
+the named env var is missing.
 
 **Webhook check:** on the Notifications page use **Send test notification**.
 The sample order has no Steam id, so it is recorded in `shopify_order_events`
@@ -160,6 +160,40 @@ Guest orders carry only `merchlock_source` — they land in
 `shopify_order_events` with `status: "unlinked"` and `steam_id: null`, and
 no inventory is granted, **by design**. You can reconcile one manually from
 `shopify_order_events` if a guest buyer later asks for the digital item.
+
+---
+
+## White-label: hide Shopify from buyers
+
+The site's own copy is Shopify-free (buttons say **SECURE CHECKOUT**). The
+payment page itself is Shopify-hosted, but you can make it carry your brand
+and your domain so buyers never see "myshopify.com":
+
+1. **Custom checkout domain** (the big one). In Shopify admin:
+   **Settings → Domains → Connect existing domain** → enter a subdomain of
+   your site, e.g. `shop.your-domain.com`. At your DNS host add a CNAME:
+   `shop` → `shops.myshopify.com`. Verify in Shopify, wait for the TLS cert,
+   then click **Set as primary**. From that moment `cartCreate` returns
+   checkout URLs on `shop.your-domain.com` — no code changes needed (the
+   server passes Shopify's `checkoutUrl` straight through).
+2. **Keep the env var on the permanent domain.**
+   `SHOPIFY_STORE_PERMANENT_DOMAIN` must STAY `<store>.myshopify.com` even
+   after the custom domain is primary — the Storefront API endpoint and the
+   webhook's `x-shopify-shop-domain` check both use the permanent domain.
+3. **Checkout appearance.** **Settings → Checkout → Customize** opens the
+   checkout editor: upload the MerchLock logo, set background/button colors to
+   the site palette, pick a matching font. **Settings → Brand** holds the
+   shared brand assets Shopify reuses across checkout and emails.
+4. **Order emails.** **Settings → Notifications**: customize the Order
+   confirmation / Shipping confirmation templates with your logo, and set the
+   **sender email** to an address on your domain (complete the SPF/DKIM
+   domain-verification steps Shopify shows so mail doesn't say "via
+   shopifyemail.com").
+5. **Reduce remaining tells (optional).** Shop Pay is the most visibly
+   Shopify-branded element at payment; you can turn it off under
+   **Settings → Payments → Shopify Payments → Manage**. Honest limit: the
+   hosted checkout's fine print and card statements may still reference
+   Shopify; a fully custom checkout requires Shopify Plus.
 
 ---
 

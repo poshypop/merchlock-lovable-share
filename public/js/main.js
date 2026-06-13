@@ -28,7 +28,7 @@
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ cart }),
     });
-    if (!payload.checkoutUrl) throw new Error("Shopify did not return a checkout URL.");
+    if (!payload.checkoutUrl) throw new Error("Checkout service did not return a checkout URL.");
     return payload.checkoutUrl;
   }
 
@@ -570,10 +570,10 @@
         </div>
         <div class="checkout-btn">
           <button type="button" class="jp rust jp-btn" data-shopify-checkout style="font-size:14px;width:100%;display:block;text-align:center;border:0;cursor:pointer;">
-            <span class="pb"></span><span class="pt">CHECKOUT WITH SHOPIFY</span>
+            <span class="pb"></span><span class="pt">SECURE CHECKOUT</span>
           </button>
         </div>
-        <div class="secure" data-shopify-feedback role="status" aria-live="polite">secure checkout via shopify</div>
+        <div class="secure" data-shopify-feedback role="status" aria-live="polite">secure encrypted checkout</div>
       </div>
     `;
 
@@ -759,7 +759,7 @@
     const btn = document.querySelector("[data-place-order]");
     if (!btn) return;
     const label = btn.querySelector(".pt");
-    if (label) label.textContent = "CHECKOUT WITH SHOPIFY";
+    if (label) label.textContent = "SECURE CHECKOUT";
     const openCheckout = async () => {
       const feedback = document.querySelector("[data-checkout-feedback]");
       if (!readCart().length) {
@@ -770,7 +770,7 @@
         btn.disabled = true;
         const url = await createShopifyCheckout(readCart());
         window.open(url, "_blank", "noopener");
-        if (feedback) feedback.textContent = "Checkout opened in a new tab on Shopify.";
+        if (feedback) feedback.textContent = "Secure checkout opened in a new tab.";
       } catch (err) {
         console.error(err);
         if (feedback) feedback.textContent = "Could not open checkout: " + (err.message || "unknown error");
